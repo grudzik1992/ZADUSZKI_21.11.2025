@@ -1,0 +1,416 @@
+import { $, $$, normalizeMultiline, trimTrailingEmptyLines } from './dom.js';
+import { convertChordNotation, initTransposeControls, normalizeChordFieldDom } from './transpose.js';
+
+const PLACEHOLDERS = {
+  chords: 'Dodaj akordy (opcjonalnie)',
+  lyrics: 'Dodaj tekst piosenki...',
+  notes: 'Dodaj notatki (widoczne tylko dla wokalisty)...',
+};
+
+const FIELD_LABELS = {
+  chords: 'Akordy',
+  lyrics: 'Tekst',
+  notes: 'Notatki',
+};
+
+function slugify(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/(^-|-$)/g, '')
+    || `song-${Date.now()}`;
+}
+
+function ensureUniqueId(baseId, songsHost) {
+  const existing = new Set($$('h2[id]', songsHost).map((h2) => h2.id));
+  if (!existing.has(baseId)) return baseId;
+  let suffix = 2;
+  let candidate = `${baseId}-${suffix}`;
+  while (existing.has(candidate)) {
+    suffix += 1;
+    candidate = `${baseId}-${suffix}`;
+  }
+  return candidate;
+}
+
+function createEditableField(type, value, { normalize } = { normalize: true }) {
+  const wrapper = document.createElement('div');
+  wrapper.className = `song-field ${type}-field`;
+
+  const label = document.createElement('div');
+  label.className = 'field-label';
+  label.textContent = FIELD_LABELS[type] || 'Pole';
+
+  const editable = document.createElement('div');
+  editable.className = type;
+  editable.contentEditable = 'true';
+  editable.dataset.placeholder = PLACEHOLDERS[type] || '';
+  editable.dataset.field = type;
+  editable.setAttribute('role', 'textbox');
+  editable.setAttribute('spellcheck', type === 'chords' ? 'false' : 'true');
+
+  if (type === 'chords') {
+    // IMPORTANT: do not modify user's input during editing. Create the
+    // chords field with the raw text and avoid automatic normalization or
+    // HTML mutation here. Normalization/transposition may still occur when
+    // the user explicitly uses transpose controls.
+    const text = value || '';
+    editable.textContent = text;
+  } else {
+    editable.textContent = value || '';
+  }
+
+  wrapper.append(label, editable);
+  return wrapper;
+}
+
+function createSongContent(songData, options) {
+  const {
+    chords = '',
+    lyrics = '',
+    notes = '',
+    normalizeChords = true,
+    showChords = true,
+  } = options;
+
+  const fieldsWrap = document.createElement('div');
+  fieldsWrap.className = 'song-fields';
+
+  if (showChords) {
+    const normalizedChords = trimTrailingEmptyLines(normalizeMultiline(chords).split('\n'));
+    fieldsWrap.appendChild(createEditableField('chords', normalizedChords, { normalize: normalizeChords }));
+  }
+
+  const normalizedLyrics = trimTrailingEmptyLines(normalizeMultiline(lyrics).split('\n'));
+  fieldsWrap.appendChild(createEditableField('lyrics', normalizedLyrics));
+
+  if (!showChords) {
+    const normalizedNotes = trimTrailingEmptyLines(normalizeMultiline(notes).split('\n'));
+    fieldsWrap.appendChild(createEditableField('notes', normalizedNotes));
+  }
+
+  return fieldsWrap;
+}
+
+function createTransposeControls() {
+  const controls = document.createElement('div');
+  controls.className = 'transpose-controls';
+
+  const down = document.createElement('button');
+  down.type = 'button';
+  down.className = 'transpose-down';
+  down.setAttribute('aria-label', 'Transponuj w dół');
+  down.textContent = '▼';
+
+  const level = document.createElement('span');
+  level.className = 'transpose-level';
+  level.title = 'Aktualna transpozycja';
+  level.dataset.level = '0';
+  level.textContent = '0';
+
+  const up = document.createElement('button');
+  up.type = 'button';
+  up.className = 'transpose-up';
+  up.setAttribute('aria-label', 'Transponuj w górę');
+  up.textContent = '▲';
+
+  controls.append(down, level, up);
+  return controls;
+}
+
+function createSongElement(songData, options, songsHost) {
+  const showChords = options.showChords !== false;
+  const enableTranspose = options.enableTranspose !== false;
+  const notesValue = typeof options.notes === 'string' ? options.notes : songData.notes || '';
+
+  const songDiv = document.createElement('div');
+  songDiv.className = 'song';
+  songDiv.dataset.upgraded = '1';
+  songDiv.dataset.chords = songData.chords || '';
+  songDiv.dataset.notes = notesValue || '';
+  if (!showChords) {
+    songDiv.classList.add('song--lyrics-only');
+  } else {
+    songDiv.classList.remove('song--lyrics-only');
+  }
+
+  const content = document.createElement('div');
+  content.className = 'song-content';
+
+  const heading = document.createElement('h2');
+  heading.id = songData.id;
+  heading.textContent = `${songData.number}. ${songData.title || 'Bez tytułu'}`;
+
+  const fields = createSongContent(songData, { ...options, notes: notesValue });
+
+  content.appendChild(heading);
+  if (enableTranspose) {
+    const controls = createTransposeControls();
+    content.appendChild(controls);
+  }
+  content.appendChild(fields);
+  songDiv.appendChild(content);
+
+  songsHost.appendChild(songDiv);
+  if (enableTranspose) {
+    initTransposeControls(songDiv);
+  }
+
+  return songDiv;
+}
+
+function createTocEntry(songData) {
+  const li = document.createElement('li');
+  li.draggable = true;
+  li.dataset.target = songData.id;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'toc-link';
+  button.dataset.target = songData.id;
+  button.textContent = `${songData.number}. ${songData.title || 'Bez tytułu'}`;
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'delete-song-btn';
+  deleteBtn.title = 'Usuń piosenkę';
+  deleteBtn.textContent = '×';
+
+  li.append(button, deleteBtn);
+  return li;
+}
+
+export function addSong(context, songData, options = {}) {
+  const { tocList, songsHost } = context;
+  if (!tocList || !songsHost) return null;
+
+  const trimmedTitle = (songData.title || '').trim();
+  const displayTitle = trimmedTitle || 'Bez tytułu';
+  const requestedId = typeof songData.id === 'string' && songData.id.trim() ? songData.id.trim() : slugify(displayTitle);
+  const id = ensureUniqueId(requestedId, songsHost);
+
+  const number = typeof songData.number === 'number' && !Number.isNaN(songData.number)
+    ? songData.number
+    : tocList.querySelectorAll('li').length + 1;
+
+  const payload = {
+    ...songData,
+    id,
+    title: displayTitle,
+    number,
+    notes: typeof songData.notes === 'string' ? songData.notes : '',
+  };
+
+  const li = createTocEntry(payload);
+  const songElement = createSongElement(
+    payload,
+    {
+      chords: songData.chords || '',
+      lyrics: songData.lyrics || '',
+      notes: payload.notes,
+      normalizeChords: options.normalizeChords !== false,
+      showChords: options.showChords !== false,
+      enableTranspose: options.enableTranspose !== false,
+    },
+    songsHost,
+  );
+
+  tocList.appendChild(li);
+  return { id, songElement, tocEntry: li };
+}
+
+export function upgradeExistingSongs(songsHost, options = {}) {
+  if (!songsHost) return;
+  const showChords = options.showChords !== false;
+  const enableTranspose = options.enableTranspose !== false;
+
+  $$('.song', songsHost).forEach((song) => {
+    if (!song || song.dataset.upgraded === '1') return;
+    const songContent = $('.song-content', song) || song;
+    if ($('.song-fields', songContent)) {
+      song.dataset.upgraded = '1';
+      if (!enableTranspose) {
+        const existingControls = $('.transpose-controls', songContent);
+        existingControls?.remove();
+      }
+      if (!showChords) {
+        const chordsEl = $('.song-field.chords-field .chords', songContent);
+        const chordsText = normalizeMultiline(chordsEl?.innerText || '').trimEnd();
+        song.dataset.chords = chordsText;
+        song.classList.add('song--lyrics-only');
+        $$('.song-field.chords-field', songContent).forEach((field) => field.remove());
+        const notesField = $('.song-field.notes-field', songContent);
+        const existingNotes = normalizeMultiline(notesField?.querySelector('.notes')?.innerText || song.dataset.notes || '').trimEnd();
+        song.dataset.notes = existingNotes;
+        if (!notesField) {
+          const lyricsField = $('.song-field.lyrics-field', songContent);
+          const wrap = $('.song-fields', songContent);
+          if (wrap) {
+            const field = createEditableField('notes', existingNotes);
+            if (lyricsField) {
+              lyricsField.insertAdjacentElement('afterend', field);
+            } else {
+              wrap.appendChild(field);
+            }
+          }
+        }
+      } else {
+        const chordsEl = $('.song-field.chords-field .chords', songContent);
+        if (chordsEl) {
+          song.dataset.chords = normalizeMultiline(chordsEl.innerText || '').trimEnd();
+        }
+        const notesField = $('.song-field.notes-field', songContent);
+        const notesValue = normalizeMultiline(notesField?.querySelector('.notes')?.innerText || song.dataset.notes || '').trimEnd();
+        song.dataset.notes = notesValue;
+        notesField?.remove();
+      }
+      return;
+    }
+
+    const legacyLines = $$('.line', songContent);
+    if (!legacyLines.length) {
+      song.dataset.upgraded = '1';
+      return;
+    }
+
+    const chordLines = [];
+    const lyricLines = [];
+    legacyLines.forEach((line) => {
+      const chordText = normalizeMultiline($('.chords', line)?.innerText || '');
+      const lyricText = normalizeMultiline($('.lyrics', line)?.innerText || '');
+      chordLines.push(chordText);
+      lyricLines.push(lyricText);
+      line.remove();
+    });
+
+    const chordsText = trimTrailingEmptyLines(chordLines);
+    const lyricsText = trimTrailingEmptyLines(lyricLines);
+
+    const heading = $('h2', songContent);
+    $$('.transpose-controls', songContent).forEach((node) => node.remove());
+
+    const notesSource = normalizeMultiline(song.dataset.notes || '').trimEnd();
+    const fields = createSongContent(
+      { chords: chordsText, lyrics: lyricsText, notes: notesSource },
+      {
+        chords: chordsText,
+        lyrics: lyricsText,
+        notes: notesSource,
+        normalizeChords: true,
+        showChords,
+      },
+    );
+
+    if (enableTranspose) {
+      const controls = createTransposeControls();
+      if (heading) {
+        heading.insertAdjacentElement('afterend', controls);
+        controls.insertAdjacentElement('afterend', fields);
+      } else {
+        songContent.prepend(controls);
+        controls.insertAdjacentElement('afterend', fields);
+      }
+      initTransposeControls(song);
+    } else if (heading) {
+      heading.insertAdjacentElement('afterend', fields);
+    } else {
+      songContent.appendChild(fields);
+    }
+
+    if (!showChords) {
+      song.classList.add('song--lyrics-only');
+    } else {
+      song.classList.remove('song--lyrics-only');
+    }
+
+  song.dataset.chords = chordsText;
+  song.dataset.notes = notesSource;
+    song.dataset.upgraded = '1';
+  });
+}
+
+export function renderSongs(context, songs, options = {}) {
+  const { tocList, songsHost } = context;
+  if (!tocList || !songsHost) return;
+
+  tocList.innerHTML = '';
+  songsHost.innerHTML = '';
+
+  songs.forEach((song) => {
+    addSong(context, song, {
+      normalizeChords: options.normalizeChords !== false,
+      showChords: options.showChords !== false,
+      enableTranspose: options.enableTranspose !== false,
+    });
+  });
+}
+
+export function serializeSongs(songsHost) {
+  const songs = [];
+  $$('.song', songsHost).forEach((song) => {
+    const heading = song.querySelector('h2');
+    const rawTitle = (heading?.textContent || '').replace(/^\d+\.\s*/, '');
+    const title = rawTitle.trim();
+    const id = heading?.id || '';
+    const chordsEl = $('.chords', song);
+    const lyricsEl = $('.lyrics', song);
+    const notesEl = $('.notes', song);
+    const chords = chordsEl
+      ? normalizeMultiline(chordsEl.innerText || '').trimEnd()
+      : normalizeMultiline(song.dataset.chords || '').trimEnd();
+    if (chordsEl) {
+      song.dataset.chords = chords;
+    }
+    const lyrics = normalizeMultiline(lyricsEl?.innerText || '').trimEnd();
+    const notes = notesEl
+      ? normalizeMultiline(notesEl.innerText || '').trimEnd()
+      : normalizeMultiline(song.dataset.notes || '').trimEnd();
+    if (notesEl) {
+      song.dataset.notes = notes;
+    }
+    songs.push({ title, id, chords, lyrics, notes });
+  });
+  return songs;
+}
+
+export function renumberSongs(tocList, songsHost) {
+  $$('.toc-link', tocList).forEach((btn, index) => {
+    const text = btn.textContent.replace(/^\d+\.\s*/, '');
+    btn.textContent = `${index + 1}. ${text}`;
+  });
+
+  $$('.song h2[id]', songsHost).forEach((heading, index) => {
+    const text = heading.textContent.replace(/^\d+\.\s*/, '');
+    heading.textContent = `${index + 1}. ${text}`;
+  });
+}
+
+export function collectOrder(tocList) {
+  return $$('#tocList li[data-target]', tocList.parentElement || document)
+    .map((item) => item.dataset.target)
+    .filter(Boolean);
+}
+
+export function applyOrder(tocList, songsHost, orderIds) {
+  const tocMap = {};
+  $$('#tocList li[data-target]', tocList.parentElement || document).forEach((li) => {
+    tocMap[li.dataset.target] = li;
+  });
+
+  orderIds.forEach((id) => {
+    const entry = tocMap[id];
+    if (entry) tocList.appendChild(entry);
+  });
+
+  const songMap = {};
+  $$('.song', songsHost).forEach((song) => {
+    const heading = song.querySelector('h2[id]');
+    if (heading?.id) {
+      songMap[heading.id] = song;
+    }
+  });
+
+  orderIds.forEach((id) => {
+    const song = songMap[id];
+    if (song) songsHost.appendChild(song);
+  });
+}
