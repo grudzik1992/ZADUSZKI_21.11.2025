@@ -470,6 +470,7 @@ body.theme-dark .song .chords {
   align-items: center;
   gap: 8px;
   margin: -4px 0 12px;
+  flex-wrap: wrap;
 }
 
 .transpose-controls button {
@@ -484,25 +485,34 @@ body.theme-dark .song .chords {
   cursor: pointer;
 }
 
-.transpose-controls .tab-toggle-btn {
+  .transpose-controls .tab-toggle-btn {
   border: 1px solid var(--border);
   background: var(--button-bg);
   color: var(--button-fg);
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 8px;
   font-size: 14px;
   margin-left: 8px;
   cursor: pointer;
-  min-width: 110px;
-  white-space: nowrap;
-}
+  min-width: 120px;
+  max-width: 220px;
+  white-space: normal; /* allow wrapping */
+  text-align: center;
+  word-break: break-word;
+ }
 
   .transpose-controls .import-btn {
-  padding: 8px 12px;
-  background: linear-gradient(180deg, var(--button-bg), #f8fafc);
-  min-width: 110px;
+  padding: 10px 14px;
+  /* use solid background for better contrast */
+  background: var(--button-bg);
+  color: var(--button-fg);
+  border: 1px solid var(--border);
+  min-width: 120px;
+  max-width: 220px;
   font-size: 14px;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  word-break: break-word;
 }
 
 .transpose-controls .bpm-input {
