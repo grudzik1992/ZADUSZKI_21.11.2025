@@ -144,6 +144,24 @@ function createTransposeControls() {
   playBtn.title = 'Play / Pause auto-scroll';
   playBtn.textContent = '▶';
   controls.appendChild(playBtn);
+  // Wire up play/pause for auto-scroll and audio. Toggle aria and dispatch events.
+  playBtn.addEventListener('click', () => {
+    const isPlaying = playBtn.getAttribute('aria-pressed') === 'true';
+    const bpm = Number(bpmInput?.value) || 0;
+    const heading = playBtn.closest('.song')?.querySelector('h2');
+    const id = heading?.id || playBtn.closest('.song')?.dataset.id || '';
+    const detail = { id, bpm };
+    if (!isPlaying) {
+      playBtn.setAttribute('aria-pressed', 'true');
+      playBtn.textContent = '⏸';
+      // bubble event to app which will start autoscroll/audio
+      playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:play', { detail, bubbles: true }));
+    } else {
+      playBtn.setAttribute('aria-pressed', 'false');
+      playBtn.textContent = '▶';
+      playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:stop', { detail, bubbles: true }));
+    }
+  });
   // Per-field font size controls: chords (guitar) and lyrics (microphone)
   const chordsDec = document.createElement('button');
   chordsDec.type = 'button';
@@ -431,22 +449,7 @@ export function upgradeExistingSongs(songsHost, options = {}) {
           const bpmInput = controls.querySelector('.bpm-input');
           const playBtn = controls.querySelector('.song-play-btn');
           if (bpmInput && typeof song.dataset.bpm === 'string') bpmInput.value = song.dataset.bpm || '';
-          if (playBtn) {
-            playBtn.addEventListener('click', () => {
-              const isPlaying = playBtn.getAttribute('aria-pressed') === 'true';
-              const bpm = Number(bpmInput?.value) || 0;
-              const detail = { id: (heading && heading.id) || song.dataset.id || '', bpm };
-              if (!isPlaying) {
-                playBtn.setAttribute('aria-pressed', 'true');
-                playBtn.textContent = '⏸';
-                song.dispatchEvent(new CustomEvent('song:play', { detail, bubbles: true }));
-              } else {
-                playBtn.setAttribute('aria-pressed', 'false');
-                playBtn.textContent = '▶';
-                song.dispatchEvent(new CustomEvent('song:stop', { detail, bubbles: true }));
-              }
-            });
-          }
+                  // play button wiring is handled in createTransposeControls when controls are created
         }
       if (!showChords) {
         const chordsEl = $('.song-field.chords-field .chords', songContent);
