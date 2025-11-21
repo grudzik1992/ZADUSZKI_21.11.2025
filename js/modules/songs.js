@@ -1,6 +1,19 @@
 import { $, $$, normalizeMultiline, trimTrailingEmptyLines } from './dom.js';
 import { convertChordNotation, initTransposeControls, normalizeChordFieldDom, resetTransposeForSong } from './transpose.js';
 
+// Utility: parse '123px' -> 123 (number) and clamp helper
+function parsePx(v) {
+  if (!v) return 0;
+  const n = parseFloat(String(v).replace('px', ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function clampPx(v, min) {
+  const n = parsePx(v);
+  const m = Number.isFinite(min) ? min : 0;
+  return `${Math.max(n || 0, m)}px`;
+}
+
 const PLACEHOLDERS = {
   chords: 'Dodaj akordy (opcjonalnie)',
   lyrics: 'Dodaj tekst piosenki...',
@@ -197,20 +210,77 @@ function createTransposeControls() {
   fontReset.className = 'tab-toggle-btn song-font-reset';
   fontReset.title = 'Resetuj czcionki tego utworu';
   fontReset.textContent = 'Reset';
-  controls.appendChild(fontReset);
-  // Import .txt input (hidden) and button
-  const importInput = document.createElement('input');
-  importInput.type = 'file';
-  importInput.accept = '.txt';
-  importInput.style.display = 'none';
-  controls.appendChild(importInput);
+  // NOTE: appended later so it appears as the final control
+  // Note: Import .txt removed — use the "Dodaj tabulaturę" toggle instead.
+  // Add per-song tablature import/save controls (right-aligned, hidden until tablature exists)
+  const tabControls = document.createElement('div');
+  tabControls.className = 'tab-controls';
+  tabControls.style.display = 'none';
 
-  const importBtn = document.createElement('button');
-  importBtn.type = 'button';
-  importBtn.className = 'tab-toggle-btn import-btn';
-  importBtn.textContent = 'Import .txt';
-  importBtn.title = 'Wczytaj tabulaturę z pliku .txt';
-  controls.appendChild(importBtn);
+  const tabImportInput = document.createElement('input');
+  tabImportInput.type = 'file';
+  tabImportInput.accept = '.txt';
+  tabImportInput.style.display = 'none';
+
+  const tabImportBtn = document.createElement('button');
+  tabImportBtn.type = 'button';
+  tabImportBtn.className = 'tab-toggle-btn tab-import-global';
+  tabImportBtn.textContent = 'Import tab';
+  tabImportBtn.title = 'Importuj tabulaturę do tego utworu (.txt)';
+
+  const tabSaveBtn = document.createElement('button');
+  tabSaveBtn.type = 'button';
+  tabSaveBtn.className = 'tab-toggle-btn tab-save-global';
+  tabSaveBtn.textContent = 'Zapisz tab';
+  tabSaveBtn.title = 'Zapisz tabulaturę tego utworu';
+
+  tabControls.appendChild(tabImportBtn);
+  tabControls.appendChild(tabSaveBtn);
+  tabControls.appendChild(tabImportInput);
+  // ensure tabControls is part of the controls DOM so it can be repositioned
+  controls.appendChild(tabControls);
+  // Wire import/save to operate on this song's tablature (closest .song)
+  tabImportBtn.addEventListener('click', () => tabImportInput.click());
+  tabImportInput.addEventListener('change', () => {
+    const file = tabImportInput.files?.[0];
+    const controlsNode = tabImportInput.closest('.transpose-controls');
+    const songContainer = controlsNode?.closest('.song');
+    if (!songContainer || !file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result.replace(/\r\n?/g, '\n') : '';
+      const fieldsWrap = songContainer.querySelector('.song-fields');
+      if (!fieldsWrap) return;
+      let tabWrap = fieldsWrap.querySelector('.song-field.tablature-field');
+      if (!tabWrap) {
+        tabWrap = createEditableField('tab', text, { normalize: false });
+        tabWrap.classList.add('tablature-field');
+        fieldsWrap.prepend(tabWrap);
+      }
+      const inner = tabWrap.querySelector('.tablature') || tabWrap.querySelector('[data-field="tab"]');
+      if (inner) {
+        inner.textContent = text;
+        inner.contentEditable = 'true';
+      }
+      songContainer.dataset.tab = (text || '').trim();
+      tabImportInput.value = '';
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  tabSaveBtn.addEventListener('click', () => {
+    const controlsNode = tabSaveBtn.closest('.transpose-controls');
+    const songContainer = controlsNode?.closest('.song');
+    if (!songContainer) return;
+    const fieldsWrap = songContainer.querySelector('.song-fields');
+    const tabWrap = fieldsWrap?.querySelector('.song-field.tablature-field');
+    const inner = tabWrap ? (tabWrap.querySelector('.tablature') || tabWrap.querySelector('[data-field="tab"]')) : null;
+    const val = inner ? (inner.textContent || '').trim() : '';
+    songContainer.dataset.tab = val;
+    const prev = tabSaveBtn.textContent;
+    tabSaveBtn.textContent = 'Zapisano';
+    setTimeout(() => { tabSaveBtn.textContent = prev; }, 1200);
+  });
 
   // Add per-song size edit toggle. When active, user can resize
   // chords and lyrics containers vertically. Persist heights to dataset.
@@ -222,60 +292,224 @@ function createTransposeControls() {
   sizeToggle.textContent = 'Rozmiar';
   controls.appendChild(sizeToggle);
 
+  // Save / Cancel buttons (hidden until edit mode)
+  const saveSizeBtn = document.createElement('button');
+  saveSizeBtn.type = 'button';
+  saveSizeBtn.className = 'tab-toggle-btn song-size-save';
+  saveSizeBtn.textContent = 'Zapisz';
+  saveSizeBtn.title = 'Zapisz wprowadzone rozmiary';
+  saveSizeBtn.style.display = 'none';
+  controls.appendChild(saveSizeBtn);
+
+  const cancelSizeBtn = document.createElement('button');
+  cancelSizeBtn.type = 'button';
+  cancelSizeBtn.className = 'tab-toggle-btn song-size-cancel';
+  cancelSizeBtn.textContent = 'Anuluj';
+  cancelSizeBtn.title = 'Anuluj zmiany rozmiaru';
+  cancelSizeBtn.style.display = 'none';
+  controls.appendChild(cancelSizeBtn);
+
   sizeToggle.addEventListener('click', () => {
     const controlsNode = sizeToggle.closest('.transpose-controls');
     const songDiv = controlsNode?.closest('.song');
     if (!songDiv) return;
-    const enabled = songDiv.classList.toggle('size-edit-mode');
-    sizeToggle.setAttribute('aria-pressed', String(enabled));
-    sizeToggle.title = enabled ? 'Wyłącz edycję rozmiaru' : 'Włącz edycję rozmiaru';
-    // when disabling, persist heights
-    if (!enabled) {
-      const chordsEl = songDiv.querySelector('.chords');
-      const lyricsEl = songDiv.querySelector('.lyrics');
-      if (chordsEl) {
-        songDiv.dataset.chordsHeight = chordsEl.style.height || getComputedStyle(chordsEl).height || '';
-      }
-      if (lyricsEl) {
-        songDiv.dataset.lyricsHeight = lyricsEl.style.height || getComputedStyle(lyricsEl).height || '';
-      }
+    const chordsEl = songDiv.querySelector('.chords');
+    const lyricsEl = songDiv.querySelector('.lyrics');
+    const songFields = songDiv.querySelector('.song-fields');
+
+    const isEditing = songDiv.classList.contains('size-edit-mode');
+    if (!isEditing) {
+      // enter edit mode
+      songDiv.classList.add('size-edit-mode');
+      sizeToggle.setAttribute('aria-pressed', 'true');
+      sizeToggle.title = 'Edytujesz rozmiar (użyj Zapisz lub Anuluj)';
+
+      // store previous inline styles so Cancel can restore
+      songDiv.dataset._prevChordsHeight = chordsEl?.style.height || songDiv.dataset.chordsHeight || '';
+      songDiv.dataset._prevLyricsHeight = lyricsEl?.style.height || songDiv.dataset.lyricsHeight || '';
+      songDiv.dataset._prevGrid = songFields?.style?.gridTemplateColumns || '';
+
+      saveSizeBtn.style.display = '';
+      cancelSizeBtn.style.display = '';
+    } else {
+      // If already editing, toggle acts as noop; instruct user to Save/Cancel
+      [chordsEl, lyricsEl].forEach((el) => { if (!el) return; el.style.boxShadow = '0 0 0 4px rgba(78,140,255,0.06)'; setTimeout(() => { el.style.boxShadow = ''; }, 250); });
     }
   });
 
-  importBtn.addEventListener('click', () => importInput.click());
-
-  importInput.addEventListener('change', () => {
-    const file = importInput.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = typeof reader.result === 'string' ? reader.result.replace(/\r\n?/g, '\n') : '';
-      // insert or update tablature field in the songDiv context (the handler that creates controls
-      // will assign this input/button to the controls for a particular song, so find the songDiv
-      const controlsNode = importInput.closest('.transpose-controls');
-      const songDiv = controlsNode?.closest('.song');
-      if (!songDiv) return;
-      const songContent = songDiv.querySelector('.song-content');
-      const fieldsWrap = songContent?.querySelector('.song-fields') || songContent;
-      if (!fieldsWrap) return;
-      // find existing tablature editable element
-      let tabEl = fieldsWrap.querySelector('.song-field.tablature-field .tablature');
-      if (!tabEl) {
-        // create a new tablature field and append
-        const tabWrap = createEditableField('tab', text, { normalize: false });
-        tabWrap.classList.add('tablature-field');
-        fieldsWrap.appendChild(tabWrap);
+  // Helper: show modal and return a promise resolved with selected action
+  function showOverflowModal({ songDiv, field }) {
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      const content = document.createElement('div');
+      content.className = 'modal-content';
+      const body = document.createElement('div');
+      body.className = 'modal-body';
+      const h3 = document.createElement('h3');
+      h3.textContent = 'Zawartość nie mieści się w podanym rozmiarze';
+      body.appendChild(h3);
+      const p = document.createElement('p');
+      if (field === 'lyrics') {
+        p.textContent = 'Wybierz, czy zawinąć tekst, zwiększyć wysokość, czy anulować.';
       } else {
-        tabEl.textContent = text;
+        p.textContent = 'Zawartość akordów nie mieści się w polu. Możesz zwiększyć wysokość lub anulować.';
       }
-      // keep dataset in sync so serialization picks it up immediately
-      songDiv.dataset.tab = text.trim();
-      // clear input for next use
-      importInput.value = '';
-    };
-    reader.readAsText(file, 'utf-8');
+      body.appendChild(p);
+      const actions = document.createElement('div');
+      actions.className = 'modal-actions';
+
+      const cancel = document.createElement('button');
+      cancel.textContent = 'Anuluj';
+      cancel.addEventListener('click', () => { document.body.removeChild(modal); resolve('cancel'); });
+      actions.appendChild(cancel);
+
+      if (field === 'lyrics') {
+        const wrapBtn = document.createElement('button');
+        wrapBtn.textContent = 'Zawijaj tekst';
+        wrapBtn.className = 'primary';
+        wrapBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve('wrap'); });
+        actions.appendChild(wrapBtn);
+      }
+
+      const growBtn = document.createElement('button');
+      growBtn.textContent = 'Zwiększ wysokość';
+      growBtn.addEventListener('click', () => { document.body.removeChild(modal); resolve('grow'); });
+      actions.appendChild(growBtn);
+
+      content.appendChild(body);
+      content.appendChild(actions);
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+    });
+  }
+
+  // Save handler: persist sizes, but confirm if content would be hidden
+  saveSizeBtn.addEventListener('click', async () => {
+    const songDiv = saveSizeBtn.closest('.song');
+    if (!songDiv) return;
+    const chordsEl = songDiv.querySelector('.chords');
+    const lyricsEl = songDiv.querySelector('.lyrics');
+    const songFields = songDiv.querySelector('.song-fields');
+
+    // compute target heights only from explicit inline style or previously persisted dataset
+    // (avoid using getComputedStyle here which can cause false positives when height is 'auto')
+    const targetChordsH = chordsEl ? (chordsEl.style.height || songDiv.dataset.chordsHeight || '') : '';
+    const targetLyricsH = lyricsEl ? (lyricsEl.style.height || songDiv.dataset.lyricsHeight || '') : '';
+    const tolerance = 4; // pixels of tolerance for minor differences/rounding
+    const chordsOverflow = chordsEl && parsePx(targetChordsH) > 0 && chordsEl.scrollHeight > (chordsEl.clientHeight + tolerance);
+    const lyricsOverflow = lyricsEl && parsePx(targetLyricsH) > 0 && lyricsEl.scrollHeight > (lyricsEl.clientHeight + tolerance);
+
+    // If overflow detected, ask user what to do
+    if (lyricsOverflow || chordsOverflow) {
+      // prioritize lyrics if both overflow
+      if (lyricsOverflow) {
+        const choice = await showOverflowModal({ songDiv, field: 'lyrics' });
+        if (choice === 'cancel') return; // stay in edit mode
+        if (choice === 'wrap') {
+          // apply wrapping for lyrics (CSS change only)
+          lyricsEl.style.whiteSpace = 'normal';
+          songDiv.dataset.lyricsWrapped = '1';
+          // persist current inline height (if any)
+          songDiv.dataset.lyricsHeight = clampPx(lyricsEl.style.height || getComputedStyle(lyricsEl).height || '', 60);
+        } else if (choice === 'grow') {
+          // set height to content height
+          const h = `${Math.max(lyricsEl.scrollHeight + 8, 60)}px`;
+          lyricsEl.style.height = h;
+          songDiv.dataset.lyricsHeight = h;
+        }
+      } else if (chordsOverflow) {
+        const choice = await showOverflowModal({ songDiv, field: 'chords' });
+        if (choice === 'cancel') return;
+        if (choice === 'grow') {
+          const h = `${Math.max(chordsEl.scrollHeight + 8, 60)}px`;
+          chordsEl.style.height = h;
+          songDiv.dataset.chordsHeight = h;
+        }
+      }
+    } else {
+      // no overflow — persist heights (clamped to sensible minimum)
+      if (chordsEl) songDiv.dataset.chordsHeight = clampPx(chordsEl.style.height || getComputedStyle(chordsEl).height || '', 60);
+      if (lyricsEl) songDiv.dataset.lyricsHeight = clampPx(lyricsEl.style.height || getComputedStyle(lyricsEl).height || '', 60);
+    }
+
+    // Persist explicit widths if the user resized horizontally (style.width)
+    try {
+      if (chordsEl) {
+        const w = chordsEl.style.width || songDiv.dataset.chordsWidth || '';
+        if (w) songDiv.dataset.chordsWidth = clampPx(w, 80);
+      }
+      if (lyricsEl) {
+        const w = lyricsEl.style.width || songDiv.dataset.lyricsWidth || '';
+        if (w) songDiv.dataset.lyricsWidth = clampPx(w, 80);
+      }
+    } catch (err) {
+      // ignore
+    }
+
+
+    // if explicit widths/heights exist, set grid to match (optional)
+    try {
+      const cw = songDiv.dataset.chordsWidth || '';
+      const lw = songDiv.dataset.lyricsWidth || '';
+      // If explicit widths exist, set grid-template-columns to ensure columns don't overlap
+      if (songFields && (cw || lw)) {
+        const left = cw || 'auto';
+        const right = lw || '1fr';
+        songFields.style.gridTemplateColumns = `${left} ${right}`;
+      }
+    } catch (err) { /* ignore */ }
+
+    // exit edit mode
+    saveSizeBtn.style.display = 'none';
+    cancelSizeBtn.style.display = 'none';
+    songDiv.classList.remove('size-edit-mode');
+    sizeToggle.setAttribute('aria-pressed', 'false');
+    sizeToggle.title = 'Włącz edycję rozmiaru kontenerów (przeciągnij by zmienić)';
+    // cleanup prev markers
+    delete songDiv.dataset._prevChordsHeight;
+    delete songDiv.dataset._prevLyricsHeight;
+    delete songDiv.dataset._prevGrid;
   });
-  return controls;
+
+  // Cancel handler: restore previous styles
+  cancelSizeBtn.addEventListener('click', () => {
+    const songDiv = cancelSizeBtn.closest('.song');
+    if (!songDiv) return;
+    const chordsEl = songDiv.querySelector('.chords');
+    const lyricsEl = songDiv.querySelector('.lyrics');
+    const songFields = songDiv.querySelector('.song-fields');
+
+    if (chordsEl) {
+      const prev = songDiv.dataset._prevChordsHeight || '';
+      if (prev) chordsEl.style.height = prev; else chordsEl.style.removeProperty('height');
+    }
+    if (lyricsEl) {
+      const prev = songDiv.dataset._prevLyricsHeight || '';
+      if (prev) lyricsEl.style.height = prev; else lyricsEl.style.removeProperty('height');
+    }
+    if (songFields) {
+      const prevG = songDiv.dataset._prevGrid || '';
+      if (prevG) songFields.style.gridTemplateColumns = prevG; else songFields.style.removeProperty('grid-template-columns');
+    }
+
+    saveSizeBtn.style.display = 'none';
+    cancelSizeBtn.style.display = 'none';
+    songDiv.classList.remove('size-edit-mode');
+    sizeToggle.setAttribute('aria-pressed', 'false');
+    sizeToggle.title = 'Włącz edycję rozmiaru kontenerów (przeciągnij by zmienić)';
+
+    delete songDiv.dataset._prevChordsHeight;
+    delete songDiv.dataset._prevLyricsHeight;
+    delete songDiv.dataset._prevGrid;
+  });
+
+    // Append Reset as the last control so it stays at the end of the toolbar
+    try {
+      controls.appendChild(fontReset);
+    } catch (e) { /* ignore */ }
+
+    return controls;
 }
 
 function createSongElement(songData, options, songsHost) {
@@ -331,6 +565,13 @@ function createSongElement(songData, options, songsHost) {
   if (enableTranspose) {
     const controls = createTransposeControls();
     content.appendChild(controls);
+    // If this song already has tablature data, show the per-song tab controls
+    try {
+      if (songData && typeof songData.tab === 'string' && songData.tab.trim()) {
+        const perSongTabControls = controls.querySelector('.tab-controls');
+        if (perSongTabControls) perSongTabControls.style.display = '';
+      }
+    } catch (e) { /* ignore */ }
       // wire up per-field font controls
       const clamp = (v) => Math.max(10, Math.min(72, v));
       const getCurrent = (prop, fallback) => {
@@ -362,33 +603,100 @@ function createSongElement(songData, options, songsHost) {
       controls.querySelector('.song-font-lyrics-decrease')?.addEventListener('click', () => applyLyricsFont(-1));
       controls.querySelector('.song-font-lyrics-increase')?.addEventListener('click', () => applyLyricsFont(1));
       controls.querySelector('.song-font-reset')?.addEventListener('click', () => {
-        // remove font-size overrides and clear dataset
-        songDiv.style.removeProperty('--song-chords-font-size');
-        songDiv.style.removeProperty('--song-lyrics-font-size');
-        delete songDiv.dataset.fontChords;
-        delete songDiv.dataset.fontLyrics;
-
-        // reset any manual widths applied to chords/lyrics
+        // Full restore: revert to the original snapshot captured at creation time
         try {
+          const orig = songDiv.dataset._origState ? JSON.parse(songDiv.dataset._origState) : {};
           const chordsEl = songDiv.querySelector('.chords');
           const lyricsEl = songDiv.querySelector('.lyrics');
+          const songFields = songDiv.querySelector('.song-fields');
+
+          // Fonts
+          if (orig.fontChords) {
+            songDiv.dataset.fontChords = orig.fontChords;
+            songDiv.style.setProperty('--song-chords-font-size', orig.fontChords);
+          } else {
+            songDiv.style.removeProperty('--song-chords-font-size');
+            delete songDiv.dataset.fontChords;
+          }
+          if (orig.fontLyrics) {
+            songDiv.dataset.fontLyrics = orig.fontLyrics;
+            songDiv.style.setProperty('--song-lyrics-font-size', orig.fontLyrics);
+          } else {
+            songDiv.style.removeProperty('--song-lyrics-font-size');
+            delete songDiv.dataset.fontLyrics;
+          }
+
+          // Widths
           if (chordsEl) {
-            chordsEl.style.removeProperty('width');
+            if (orig.chordsWidth) {
+              chordsEl.style.width = orig.chordsWidth;
+              songDiv.dataset.chordsWidth = orig.chordsWidth;
+            } else {
+              chordsEl.style.removeProperty('width');
+              delete songDiv.dataset.chordsWidth;
+            }
           }
           if (lyricsEl) {
-            lyricsEl.style.removeProperty('width');
+            if (orig.lyricsWidth) {
+              lyricsEl.style.width = orig.lyricsWidth;
+              songDiv.dataset.lyricsWidth = orig.lyricsWidth;
+            } else {
+              lyricsEl.style.removeProperty('width');
+              delete songDiv.dataset.lyricsWidth;
+            }
           }
-          delete songDiv.dataset.chordsWidth;
-          delete songDiv.dataset.lyricsWidth;
-        } catch (err) {
-          // ignore
-        }
 
-        // reset transpose level for the song if available
-        try {
-          resetTransposeForSong(songDiv);
+          // Heights
+          if (chordsEl) {
+            if (orig.chordsHeight) {
+              chordsEl.style.height = orig.chordsHeight;
+              songDiv.dataset.chordsHeight = orig.chordsHeight;
+            } else {
+              chordsEl.style.removeProperty('height');
+              delete songDiv.dataset.chordsHeight;
+            }
+          }
+          if (lyricsEl) {
+            if (orig.lyricsHeight) {
+              lyricsEl.style.height = orig.lyricsHeight;
+              songDiv.dataset.lyricsHeight = orig.lyricsHeight;
+            } else {
+              lyricsEl.style.removeProperty('height');
+              delete songDiv.dataset.lyricsHeight;
+            }
+          }
+
+          // Grid/template
+          if (songFields) {
+            if (orig.gridTemplate) {
+              songFields.style.gridTemplateColumns = orig.gridTemplate;
+            } else {
+              songFields.style.removeProperty('grid-template-columns');
+            }
+          }
+
+          // lyrics wrapping
+          if (orig.lyricsWrapped) {
+            if (lyricsEl) lyricsEl.style.whiteSpace = 'normal';
+            songDiv.dataset.lyricsWrapped = orig.lyricsWrapped;
+          } else {
+            if (lyricsEl) lyricsEl.style.removeProperty('white-space');
+            delete songDiv.dataset.lyricsWrapped;
+          }
+
+          // Reset transposition and any chord normalization
+          try { resetTransposeForSong(songDiv); } catch (e) { /* ignore */ }
+
         } catch (err) {
-          // ignore if function unavailable
+          // fallback: remove obvious overrides
+          songDiv.style.removeProperty('--song-chords-font-size');
+          songDiv.style.removeProperty('--song-lyrics-font-size');
+          const chordsEl = songDiv.querySelector('.chords');
+          const lyricsEl = songDiv.querySelector('.lyrics');
+          if (chordsEl) { chordsEl.style.removeProperty('width'); chordsEl.style.removeProperty('height'); }
+          if (lyricsEl) { lyricsEl.style.removeProperty('width'); lyricsEl.style.removeProperty('height'); lyricsEl.style.removeProperty('white-space'); }
+          delete songDiv.dataset.chordsWidth; delete songDiv.dataset.lyricsWidth; delete songDiv.dataset.chordsHeight; delete songDiv.dataset.lyricsHeight; delete songDiv.dataset.fontChords; delete songDiv.dataset.fontLyrics; delete songDiv.dataset.lyricsWrapped;
+          try { resetTransposeForSong(songDiv); } catch (e) { /* ignore */ }
         }
       });
     // Add a simple tab toggle control next to transpose controls
@@ -400,31 +708,95 @@ function createSongElement(songData, options, songsHost) {
     tabToggle.textContent = tabLabel;
     tabToggle.title = tabLabel;
     tabToggle.addEventListener('click', () => {
-      const fieldsWrap = songDiv.querySelector('.song-fields');
+      // locate song container from the controls element to avoid relying on outer scope
+      const controlsNode = tabToggle.closest('.transpose-controls');
+      const songContainer = controlsNode?.closest('.song');
+      if (!songContainer) return;
+      const fieldsWrap = songContainer.querySelector('.song-fields');
       if (!fieldsWrap) return;
       const existing = fieldsWrap.querySelector('.song-field.tablature-field');
       if (existing) {
         existing.remove();
-        delete songDiv.dataset.tab;
+        delete songContainer.dataset.tab;
+        // hide per-song tab controls when tablature removed
+        try {
+          const perSongTabControls = controlsNode.querySelector('.tab-controls');
+          if (perSongTabControls) perSongTabControls.style.display = 'none';
+        } catch (e) { /* ignore */ }
         tabToggle.textContent = 'Dodaj tabulaturę';
+        tabToggle.title = 'Dodaj tabulaturę';
         return;
       }
-      const tabContent = songDiv.dataset.tab || '';
-      const tabField = createEditableField('tab', tabContent, { normalize: false });
-      tabField.classList.add('tablature-field');
-      fieldsWrap.appendChild(tabField);
-      songDiv.dataset.tab = tabContent;
+      const tabContent = songContainer.dataset.tab || '';
+      const tabWrap = createEditableField('tab', tabContent, { normalize: false });
+      tabWrap.classList.add('tablature-field');
+      // (Import/Save controls are provided in the transpose controls toolbar)
+
+      // ensure inner editable element exists and is editable
+      const inner = tabWrap.querySelector('.tablature') || tabWrap.querySelector('.tab') || tabWrap.querySelector('[data-field="tab"]');
+      if (inner) inner.contentEditable = 'true';
+      // prepend so the tablature block appears at the top of the fields area
+      fieldsWrap.prepend(tabWrap);
+      // persist an initial empty tab or existing dataset value
+      songContainer.dataset.tab = (tabContent || '').trim();
+      // show per-song tab controls when tablature exists
+      try {
+        const perSongTabControls = controlsNode.querySelector('.tab-controls');
+        if (perSongTabControls) perSongTabControls.style.display = '';
+      } catch (e) { /* ignore */ }
       tabToggle.textContent = 'Usuń tabulaturę';
+      tabToggle.title = 'Usuń tabulaturę';
     });
     controls.appendChild(tabToggle);
+    // place the tab import/save controls immediately after the tab toggle
+    try {
+      tabToggle.insertAdjacentElement('afterend', controls.querySelector('.tab-controls'));
+    } catch (e) { /* ignore if insertion fails */ }
   }
   content.appendChild(fields);
+  // Capture an original snapshot of visual/size state for this song so the
+  // full-restore button can revert all per-song overrides later.
+  try {
+    if (!songDiv.dataset._origState) {
+      const chordsInit = songDiv.querySelector('.chords');
+      const lyricsInit = songDiv.querySelector('.lyrics');
+      const fieldsInit = songDiv.querySelector('.song-fields');
+      const cs = (el, prop) => (el ? getComputedStyle(el).getPropertyValue(prop) : '');
+      const orig = {
+        fontChords: songDiv.dataset.fontChords || cs(songDiv, '--song-chords-font-size') || '',
+        fontLyrics: songDiv.dataset.fontLyrics || cs(songDiv, '--song-lyrics-font-size') || '',
+        chordsWidth: chordsInit ? (chordsInit.style.width || '') : '',
+        lyricsWidth: lyricsInit ? (lyricsInit.style.width || '') : '',
+        chordsHeight: chordsInit ? (chordsInit.style.height || '') : '',
+        lyricsHeight: lyricsInit ? (lyricsInit.style.height || '') : '',
+        gridTemplate: fieldsInit ? (fieldsInit.style.gridTemplateColumns || '') : '',
+        lyricsWrapped: songDiv.dataset.lyricsWrapped || ''
+      };
+      songDiv.dataset._origState = JSON.stringify(orig);
+    }
+  } catch (err) { /* ignore snapshot failures */ }
   // apply heights to rendered fields
   try {
     const chordsEl = songDiv.querySelector('.chords');
     const lyricsEl = songDiv.querySelector('.lyrics');
-    if (songDiv.dataset.chordsHeight && chordsEl) chordsEl.style.height = songDiv.dataset.chordsHeight;
-    if (songDiv.dataset.lyricsHeight && lyricsEl) lyricsEl.style.height = songDiv.dataset.lyricsHeight;
+    // Ensure editable fields remain editable and clamp persisted sizes to sensible minimums
+    if (chordsEl) chordsEl.contentEditable = 'true';
+    if (lyricsEl) lyricsEl.contentEditable = 'true';
+    if (songDiv.dataset.chordsHeight && chordsEl) chordsEl.style.height = clampPx(songDiv.dataset.chordsHeight, 60);
+    if (songDiv.dataset.lyricsHeight && lyricsEl) lyricsEl.style.height = clampPx(songDiv.dataset.lyricsHeight, 60);
+    // apply persisted widths if present and set grid-template so columns align
+    const songFields = songDiv.querySelector('.song-fields');
+    if (songDiv.dataset.chordsWidth && chordsEl) chordsEl.style.width = clampPx(songDiv.dataset.chordsWidth, 80);
+    if (songDiv.dataset.lyricsWidth && lyricsEl) lyricsEl.style.width = clampPx(songDiv.dataset.lyricsWidth, 80);
+    try {
+      const cw = songDiv.dataset.chordsWidth || '';
+      const lw = songDiv.dataset.lyricsWidth || '';
+      if (songFields && (cw || lw)) {
+        const left = cw || 'auto';
+        const right = lw || '1fr';
+        songFields.style.gridTemplateColumns = `${left} ${right}`;
+      }
+    } catch (err) { /* ignore */ }
   } catch (err) {
     // ignore
   }

@@ -435,37 +435,26 @@ body.theme-dark .delete-song-btn:hover {
   cursor: text;
 }
 
-/* When size-edit-mode is enabled allow horizontal resizing of fields (width) */
+/* When size-edit-mode is enabled allow resizing in both directions (width & height)
+   so user can drag the corner to adjust size diagonally. Keep sensible minimums. */
 .song.size-edit-mode .chords,
 .song.size-edit-mode .lyrics {
-  resize: horizontal;
+  resize: both;
   overflow: auto;
   min-width: 80px;
+  min-height: 60px;
   max-width: 100%;
   border-style: solid;
   border-color: var(--accent);
 }
 
-/* When editing widths, let the grid use auto sizing for the first column so
-   inline widths on .chords/.lyrics are respected */
+/* When editing sizes, let the grid use auto sizing for the first column so
+   inline widths/heights on .chords/.lyrics are respected */
 .song.size-edit-mode .song-fields {
   grid-template-columns: auto 1fr;
 }
 
-/* Vertical resize mode (heights) */
-.song.size-edit-height .chords,
-.song.size-edit-height .lyrics {
-  resize: vertical;
-  overflow: auto;
-  min-height: 60px;
-  border-style: solid;
-  border-color: var(--accent);
-}
-
-/* When editing heights keep usual two-column grid */
-.song.size-edit-height .song-fields {
-  grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
-}
+/* (Removed separate vertical-only mode — single `Rozmiar` controls both axes.) */
 
 /* Per-field font-size overrides */
 .song .chords {
@@ -627,6 +616,12 @@ body.theme-dark .song .chords {
     overflow: visible;
     text-overflow: clip;
     max-width: none;
+  }
+
+  /* Make the per-song Reset button text red and visually distinct */
+  .transpose-controls .song-font-reset {
+    color: #e11d48; /* accessible red */
+    border-color: rgba(225,29,72,0.12);
   }
 }
 
