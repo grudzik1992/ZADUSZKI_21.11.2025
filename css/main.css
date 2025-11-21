@@ -488,16 +488,21 @@ body.theme-dark .song .chords {
   border: 1px solid var(--border);
   background: var(--button-bg);
   color: var(--button-fg);
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-radius: 8px;
-  font-size: 13px;
-  margin-left: 6px;
+  font-size: 14px;
+  margin-left: 8px;
   cursor: pointer;
+  min-width: 110px;
+  white-space: nowrap;
 }
 
-.transpose-controls .import-btn {
-  padding: 6px 8px;
+  .transpose-controls .import-btn {
+  padding: 8px 12px;
   background: linear-gradient(180deg, var(--button-bg), #f8fafc);
+  min-width: 110px;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .transpose-controls .bpm-input {
@@ -513,8 +518,8 @@ body.theme-dark .song .chords {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 40px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--button-bg);
