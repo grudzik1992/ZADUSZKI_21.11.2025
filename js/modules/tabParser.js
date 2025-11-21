@@ -140,49 +140,50 @@ function parseTabColumns(lines) {
   }
   if (!finalTab) finalTab = candidates.slice(0, 6);
 
-  // normalize: strip leading up to first '|' to align columns
-  finalTab = finalTab.map(ln => {
-    const pos = ln.indexOf('|');
-    return pos >= 0 ? ln.slice(pos + 1) : ln;
-  });
-
-  const maxLen = Math.max(...finalTab.map(l => l.length));
-  // pad lines
-  for (let i = 0; i < finalTab.length; i++) finalTab[i] = finalTab[i].padEnd(maxLen, ' ');
-
-  // determine columnsPerBar by finding first two '|' positions in the original first candidate
-  let columnsPerBar = 16;
-  const firstLineRaw = candidates.find(l => l.indexOf('|') >= 0) || '';
-  const pipeIdx = [];
-  for (let i = 0; i < firstLineRaw.length; i++) if (firstLineRaw[i] === '|') pipeIdx.push(i);
-  if (pipeIdx.length >= 2) {
-    const gap = pipeIdx[1] - pipeIdx[0] - 1;
-    if (gap >= 4) columnsPerBar = gap;
-  }
-
+  // split each original finalTab line into bar segments using '|' and process per-bar
+  const barLines = finalTab.map(ln => ln.split('|'));
+  // determine number of bars as max number of segments across strings
+  const barsCount = Math.max(...barLines.map(arr => arr.length));
   const beatsPerBar = 4;
   const events = [];
-  let maxCol = maxLen;
-  for (let c = 0; c < maxCol; c++) {
-    const notes = [];
+  let globalColIndex = 0;
+  for (let bar = 0; bar < barsCount; bar++) {
+    // collect the segment for each string for this bar (may be undefined)
+    const segs = [];
     for (let s = 0; s < 6; s++) {
-      const line = finalTab[s];
-      // try to read up to 3 digits starting at c
-      const sub = line.slice(c, c + 3);
-      const m = sub.match(/^\d{1,3}/);
-      if (m) {
-        const fret = parseInt(m[0], 10);
-        const midi = STRING_BASES[s] + fret;
-        notes.push(midi);
-      }
+      const arr = barLines[s] || [];
+      const seg = (typeof arr[bar] === 'string') ? arr[bar] : '';
+      segs.push(seg.replace(/^\s+|\s+$/g, ''));
     }
-    if (notes.length) {
-      const timeBeats = (c / columnsPerBar) * beatsPerBar;
-      const durationBeats = (1 / columnsPerBar) * beatsPerBar; // one subdivision
-      events.push({ timeBeats, durationBeats, notes });
+
+    const maxLen = Math.max(...segs.map(s => s.length));
+    // pad segments
+    for (let i = 0; i < segs.length; i++) segs[i] = segs[i].padEnd(maxLen, ' ');
+
+    const columnsPerBar = Math.max(1, maxLen);
+    // iterate columns within this bar
+    for (let c = 0; c < columnsPerBar; c++) {
+      const notes = [];
+      for (let s = 0; s < 6; s++) {
+        const line = segs[s] || '';
+        const sub = line.slice(c, c + 3);
+        const m = sub.match(/^\d{1,3}/);
+        if (m) {
+          const fret = parseInt(m[0], 10);
+          const midi = STRING_BASES[s] + fret;
+          notes.push(midi);
+        }
+      }
+      if (notes.length) {
+        const barStartBeats = bar * beatsPerBar;
+        const timeBeats = barStartBeats + (c / columnsPerBar) * beatsPerBar;
+        const durationBeats = (1 / columnsPerBar) * beatsPerBar;
+        events.push({ timeBeats, durationBeats, notes });
+      }
+      globalColIndex++;
     }
   }
 
-  const totalBeats = Math.ceil((maxCol / columnsPerBar) * beatsPerBar);
+  const totalBeats = barsCount * beatsPerBar;
   return { events, tokens: [], meta: { beats: totalBeats } };
 }
