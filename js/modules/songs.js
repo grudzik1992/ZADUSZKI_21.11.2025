@@ -397,7 +397,7 @@ function createSongElement(songData, options, songsHost) {
     tabToggle.className = 'tab-toggle-btn';
     // use icon + label span so label can be forced to nowrap and avoid mid-word breaks
     const tabLabel = songData.tab ? 'Usuń tabulaturę' : 'Dodaj tabulaturę';
-    tabToggle.innerHTML = `<span class="icon">🎼</span><span class="label">${tabLabel}</span>`;
+    tabToggle.textContent = tabLabel;
     tabToggle.title = tabLabel;
     tabToggle.addEventListener('click', () => {
       const fieldsWrap = songDiv.querySelector('.song-fields');
