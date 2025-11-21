@@ -54,6 +54,9 @@ function queryAllSelectors() {
     profileSelect: $('#profileSelect'),
     importBtn: $('#importJsonBtn'),
     importInput: $('#importJsonInput'),
+    fontDecreaseBtn: $('#fontDecreaseBtn'),
+    fontIncreaseBtn: $('#fontIncreaseBtn'),
+    pxPerBeatInput: $('#pxPerBeatInput'),
   };
 }
 
@@ -62,11 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const context = { tocList: refs.tocList, songsHost: refs.songsHost };
   const scrollWithOffset = (targetId) => scrollToSong(targetId, refs.toolbar);
   let currentProfile = PROFILE_VOCALIST;
+  const FONT_SIZE_KEY = 'songbook-font-size';
+  const PX_PER_BEAT_KEY = 'songbook-px-per-beat';
 
   currentProfile = initProfileControl(refs.profileSelect, { onChange: handleProfileChange });
 
   const themeController = initTheme(refs.themeToggle);
   setupPrintThemeGuard(themeController);
+
+  initFontSizeControls();
+  initPxPerBeatControl();
   // If defaults version changed, clear saved user data so app loads new factory defaults
   try {
     const savedVersion = getSavedDefaultsVersion();
@@ -217,6 +225,98 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  function initFontSizeControls() {
+    const decrease = refs.fontDecreaseBtn;
+    const increase = refs.fontIncreaseBtn;
+    const root = document.documentElement;
+    const getSaved = () => localStorage.getItem(FONT_SIZE_KEY) || '';
+    const applySize = (value) => {
+      if (!value) return;
+      root.style.setProperty('--base-font-size', value);
+    };
+    // apply saved or default
+    const saved = getSaved();
+    if (saved) applySize(saved);
+
+    decrease?.addEventListener('click', () => {
+      const computed = getComputedStyle(document.documentElement).getPropertyValue('--base-font-size').trim() || '18px';
+      const num = parseFloat(computed.replace('px','')) || 18;
+      const next = Math.max(12, Math.round((num - 1) * 10) / 10) + 'px';
+      applySize(next);
+      localStorage.setItem(FONT_SIZE_KEY, next);
+    });
+
+    increase?.addEventListener('click', () => {
+      const computed = getComputedStyle(document.documentElement).getPropertyValue('--base-font-size').trim() || '18px';
+      const num = parseFloat(computed.replace('px','')) || 18;
+      const next = Math.min(36, Math.round((num + 1) * 10) / 10) + 'px';
+      applySize(next);
+      localStorage.setItem(FONT_SIZE_KEY, next);
+    });
+  }
+
+  function initPxPerBeatControl() {
+    const input = refs.pxPerBeatInput;
+    if (!input) return;
+    const saved = localStorage.getItem(PX_PER_BEAT_KEY);
+    if (saved) input.value = saved;
+    input.addEventListener('change', () => {
+      const v = Number(input.value) || 30;
+      localStorage.setItem(PX_PER_BEAT_KEY, String(v));
+    });
+  }
+
+  // Autoscroll manager
+  const autoScrollState = { raf: null, lastTime: null, speedPxPerSec: 0, targetSong: null };
+  function startAutoScroll({ id, bpm }) {
+    stopAutoScroll();
+    const songEl = document.getElementById(id)?.closest('.song');
+    if (!songEl) return;
+    const pxPerBeat = Number(localStorage.getItem(PX_PER_BEAT_KEY)) || Number(refs.pxPerBeatInput?.value) || 30;
+    const speed = (pxPerBeat * (Number(bpm) || 60)) / 60; // px per second
+    autoScrollState.speedPxPerSec = speed;
+    autoScrollState.targetSong = songEl;
+    autoScrollState.lastTime = performance.now();
+    function step(now) {
+      const dt = (now - autoScrollState.lastTime) / 1000;
+      autoScrollState.lastTime = now;
+      const amount = autoScrollState.speedPxPerSec * dt;
+      // Scroll the window smoothly, keep song visible
+      window.scrollBy({ top: amount, left: 0, behavior: 'auto' });
+      // stop when we reach bottom of song
+      const songRect = autoScrollState.targetSong.getBoundingClientRect();
+      if (songRect.bottom <= (window.innerHeight || document.documentElement.clientHeight)) {
+        stopAutoScroll();
+        return;
+      }
+      autoScrollState.raf = requestAnimationFrame(step);
+    }
+    autoScrollState.raf = requestAnimationFrame(step);
+  }
+
+  function stopAutoScroll() {
+    if (autoScrollState.raf) {
+      cancelAnimationFrame(autoScrollState.raf);
+      autoScrollState.raf = null;
+      autoScrollState.lastTime = null;
+      autoScrollState.targetSong = null;
+    }
+    // ensure any play buttons are reset
+    document.querySelectorAll('.song-play-btn[aria-pressed="true"]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = '▶';
+    });
+  }
+
+  // listen for song play/stop events bubbled from song elements
+  refs.songsHost?.addEventListener('song:play', (e) => {
+    const { id, bpm } = e.detail || {};
+    startAutoScroll({ id, bpm });
+  });
+  refs.songsHost?.addEventListener('song:stop', () => {
+    stopAutoScroll();
+  });
 
   function initToolbarActions() {
     const { saveBtn, clearBtn } = refs;

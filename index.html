@@ -25,6 +25,10 @@
           <option value="vocalist">Wokalista</option>
         </select>
       </label>
+      <div class="font-size-controls" title="Zmiana rozmiaru czcionki">
+        <button id="fontDecreaseBtn" type="button">A-</button>
+        <button id="fontIncreaseBtn" type="button">A+</button>
+      </div>
       <button id="addSongBtn" type="button">Dodaj utwór</button>
       <button id="saveSongbookBtn" type="button">Zapisz zmiany</button>
       <button id="importJsonBtn" type="button">Wczytaj JSON</button>
@@ -35,6 +39,10 @@
         <span class="icon-label">Zablokuj</span>
       </button>
       <button id="exportPdfBtn" type="button">Drukuj / PDF</button>
+      <div class="px-per-beat" title="Ustaw piksele na beat (dla auto-scroll)">
+        <label for="pxPerBeatInput">px/beat</label>
+        <input id="pxPerBeatInput" type="number" min="1" step="1" value="30" />
+      </div>
       <button id="helpBtn" type="button">Instrukcja obsługi</button>
       <button id="themeToggle" type="button" data-mode="light" aria-pressed="false">Tryb nocny</button>
     </div>
