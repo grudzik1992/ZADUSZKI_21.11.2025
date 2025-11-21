@@ -373,10 +373,6 @@ export function observeChordFieldEdits(root = document, { normalizeOnBlur = fals
     // No-op: user asked that editing should not be modified automatically.
     return;
   }
-<<<<<<< HEAD
-
-=======
->>>>>>> da034a3 (Pierwszy commit - śpiewnik)
   root.addEventListener('input', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
