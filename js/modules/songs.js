@@ -151,6 +151,20 @@ function createTransposeControls() {
   bpmInput.title = 'Tempo (BPM)';
   bpmInput.placeholder = 'BPM';
   controls.appendChild(bpmInput);
+  // Tempo increment/decrement buttons
+  const tempoDec = document.createElement('button');
+  tempoDec.type = 'button';
+  tempoDec.className = 'tab-toggle-btn song-tempo-decrease';
+  tempoDec.title = 'Zmniejsz tempo';
+  tempoDec.textContent = '−';
+  controls.appendChild(tempoDec);
+
+  const tempoInc = document.createElement('button');
+  tempoInc.type = 'button';
+  tempoInc.className = 'tab-toggle-btn song-tempo-increase';
+  tempoInc.title = 'Zwiększ tempo';
+  tempoInc.textContent = '+';
+  controls.appendChild(tempoInc);
 
   const playBtn = document.createElement('button');
   playBtn.type = 'button';
@@ -176,6 +190,25 @@ function createTransposeControls() {
       playBtn.textContent = '▶';
       playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:autoscroll-stop', { detail, bubbles: true }));
     }
+  });
+
+  // tempo +/- handling: change bpm input and notify app
+  const clampBpm = (v) => Math.max(20, Math.min(300, Math.round(v)));
+  tempoDec.addEventListener('click', () => {
+    const cur = Number(bpmInput.value) || 90;
+    const next = clampBpm(cur - 5);
+    bpmInput.value = String(next);
+    const heading = tempoDec.closest('.song')?.querySelector('h2');
+    const id = heading?.id || tempoDec.closest('.song')?.dataset.id || '';
+    tempoDec.closest('.song')?.dispatchEvent(new CustomEvent('song:tempo-change', { detail: { id, bpm: next }, bubbles: true }));
+  });
+  tempoInc.addEventListener('click', () => {
+    const cur = Number(bpmInput.value) || 90;
+    const next = clampBpm(cur + 5);
+    bpmInput.value = String(next);
+    const heading = tempoInc.closest('.song')?.querySelector('h2');
+    const id = heading?.id || tempoInc.closest('.song')?.dataset.id || '';
+    tempoInc.closest('.song')?.dispatchEvent(new CustomEvent('song:tempo-change', { detail: { id, bpm: next }, bubbles: true }));
   });
 
   // Audio-only play button: will attempt to resume AudioContext on user gesture

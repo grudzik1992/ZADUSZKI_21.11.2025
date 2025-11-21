@@ -356,6 +356,27 @@ document.addEventListener('DOMContentLoaded', () => {
     stopAudioPlayback();
   });
 
+  // listen for tempo change events from song controls
+  refs.songsHost?.addEventListener('song:tempo-change', (e) => {
+    try {
+      const { id, bpm } = e.detail || {};
+      const tempo = Number(bpm) || 0;
+      if (!tempo) return;
+      // persist last-used BPM globally so fallback playback/autoscroll can use it
+      try { localStorage.setItem('songbook-bpm', String(tempo)); } catch (err) { /* ignore */ }
+      if (window.Tone && window.Tone.Transport && typeof window.Tone.Transport.bpm === 'object') {
+        try { window.Tone.Transport.bpm.value = tempo; } catch (err) { /* ignore */ }
+      }
+      // also persist per-song bpm on the DOM dataset for serialization
+      try {
+        const songEl = document.getElementById(id)?.closest('.song');
+        if (songEl) songEl.dataset.bpm = String(tempo);
+      } catch (err) { /* ignore */ }
+    } catch (err) {
+      console.warn('Error handling tempo change:', err);
+    }
+  });
+
   let _currentSynth = null;
   let _midiAccess = null;
   let _midiOutput = null;
