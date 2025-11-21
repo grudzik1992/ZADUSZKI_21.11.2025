@@ -525,26 +525,30 @@ export function collectOrder(tocList) {
 }
 
 export function applyOrder(tocList, songsHost, orderIds) {
-  const tocMap = {};
-  $$('#tocList li[data-target]', tocList.parentElement || document).forEach((li) => {
-    tocMap[li.dataset.target] = li;
-  });
-
+  // Reorder TOC entries based on provided orderIds
+  const tocEntries = Array.from(tocList.querySelectorAll('li[data-target]'));
+  const tocMap = new Map(tocEntries.map((li) => [li.dataset.target, li]));
   orderIds.forEach((id) => {
-    const entry = tocMap[id];
+    const entry = tocMap.get(id);
     if (entry) tocList.appendChild(entry);
   });
 
-  const songMap = {};
-  $$('.song', songsHost).forEach((song) => {
-    const heading = song.querySelector('h2[id]');
-    if (heading?.id) {
-      songMap[heading.id] = song;
-    }
-  });
-
+  // Reorder song elements. Use document.getElementById(id) to locate the heading
+  // and then find its closest .song container. This is more robust than relying
+  // on existing dataset values on the song elements.
   orderIds.forEach((id) => {
-    const song = songMap[id];
-    if (song) songsHost.appendChild(song);
+    try {
+      const heading = document.getElementById(id);
+      const song = heading?.closest('.song');
+      if (song && songsHost.contains(song) === false) {
+        // If song is not currently a child of songsHost, append it.
+        songsHost.appendChild(song);
+      } else if (song) {
+        // Move song to the correct position by appending (appendChild moves existing nodes)
+        songsHost.appendChild(song);
+      }
+    } catch (err) {
+      // ignore malformed ids
+    }
   });
 }
