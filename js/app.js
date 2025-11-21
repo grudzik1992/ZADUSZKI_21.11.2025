@@ -716,6 +716,8 @@ document.addEventListener('DOMContentLoaded', () => {
         notes: typeof song?.notes === 'string' ? song.notes : '',
         tab: typeof song?.tab === 'string' ? song.tab : '',
         font: typeof song?.font === 'string' ? song.font : (typeof song?.fontSize === 'string' ? song.fontSize : ''),
+        fontChords: typeof song?.fontChords === 'string' ? song.fontChords : '',
+        fontLyrics: typeof song?.fontLyrics === 'string' ? song.fontLyrics : '',
       };
     });
 

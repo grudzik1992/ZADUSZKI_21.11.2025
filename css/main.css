@@ -433,6 +433,17 @@ body.theme-dark .delete-song-btn:hover {
   cursor: text;
 }
 
+/* Per-field font-size overrides */
+.song .chords {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 700;
+  font-size: var(--song-chords-font-size, var(--base-font-size));
+}
+
+.song .lyrics {
+  font-size: var(--song-lyrics-font-size, var(--base-font-size));
+}
+
 .song .chords {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-weight: 700;
