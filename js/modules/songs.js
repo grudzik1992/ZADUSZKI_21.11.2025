@@ -394,8 +394,10 @@ function createSongElement(songData, options, songsHost) {
     const tabToggle = document.createElement('button');
     tabToggle.type = 'button';
     tabToggle.className = 'tab-toggle-btn';
-    tabToggle.textContent = songData.tab ? 'Usuń tabulaturę' : 'Dodaj tabulaturę';
-    tabToggle.title = 'Dodaj lub usuń tabulaturę dla tego utworu';
+    // use icon + label span so label can be forced to nowrap and avoid mid-word breaks
+    const tabLabel = songData.tab ? 'Usuń tabulaturę' : 'Dodaj tabulaturę';
+    tabToggle.innerHTML = `<span class="icon">🎼</span><span class="label">${tabLabel}</span>`;
+    tabToggle.title = tabLabel;
     tabToggle.addEventListener('click', () => {
       const fieldsWrap = songDiv.querySelector('.song-fields');
       if (!fieldsWrap) return;

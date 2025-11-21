@@ -540,6 +540,12 @@ body.theme-dark .song .chords {
   white-space: nowrap;
 }
 
+/* Ensure tab-toggle buttons themselves avoid breaking labels mid-word */
+.transpose-controls .tab-toggle-btn {
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
 /* Smaller compact style for the small font-control buttons */
 .tab-toggle-btn.song-font-chords-decrease,
 .tab-toggle-btn.song-font-chords-increase,
