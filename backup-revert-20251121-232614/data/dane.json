@@ -1,0 +1,24 @@
+{
+  "profile": "instrumentalist",
+  "generatedAt": "2025-11-20T22:56:08.141Z",
+  "songs": [
+    {
+      "title": "Życie to krótki sen",
+      "id": "zycie-to-krotki-sen",
+      "chords": "e | D C e\n\n\n\n\nG e | G C\n\nG e | D C H | e\n\n\n\n\n\n\n\n\n\n\n\nG C D | e C\nG e D\nC H | e",
+      "lyrics": "Kiedy myślę o moich latach, które odeszły\ni nie wrócą nigdy już\ni o ludziach, którzy na drugą stronę przeszli\na nadal są tuż, tuż\n\ni tak wiele się stało\ni nie stało się nic\nmilion twarzy i zdarzeń\ni to wszystko zaledwie - szkic\n\nżycie to krótki sen\n\nKiedy patrzę na moje dzieci, które niebawem\npójdą sobie w świat\ntoż to całkiem niedawno było, kiedy ledwo chodził\njeden z drugim skrzat\n\nMatki mojej siwizna\njak dobrze, że jeszcze tu jest\nojciec mój i ojczyzna\ni gest, i szelest, i cisza\n\nżycie to krótki sen\n\nTej nuty sentymentalnej, ja się nie wstydzę\npiękno jest piękne na wieki, ja to wiem\ni ja to widzę\n\nPóki wiosna przychodzi, odchodzi,\nprzychodzi, odchodzi i wraca -\nto wystarczy mi\npóki każdy wysiłek w miłość się obraca -\nsen na jawie mi się śni\n\nNasze myśli podniebne\nniech szybują wśród chwil\nsłowa już niepotrzebne\ntylko gest - cisza - i Ty\n\nżycie to krótki sen\nżycie to krótki sen\życie to piękny sen\n\nżycie to krótki sen\nżycie to krótki sen\życie to krótki sen\życie to krótki sen\nkrótki sen",
+      "notes": ""
+    },
+    {
+      "title": "By coś zostało z tamtych lat",
+      "id": "by-cos-zostao-z-tamtych-lat",
+      "chords": "D h e A | H E A D {c#}\n\nh F# h\nh F#\nH e A D {c#}\nh e F# h A\n\nD h \ne A | H E A D - całość x2\n\nh F# h\nh F#\nH e A D {c#}\nh e F# h A\n\nD h \ne A | H E A D - całość x2\n\nD\nh\ne A | H E A D",
+      "lyrics": "\n\nZnów noc, noc, pani szalona wiruje wokół nas,\nZnów świat, świat wzięłam w ramiona, przystanął w miejscu czas.\nZnowu walc we władanie swe poddał ciebie i mnie,\nA ja w twe oczy wpatrzona, jednego tylko chcę:\n\nTak żyć, żyć, by coś zostało z tych dni, dni,\nKiedy się miało w ramionach cały świat, gdy przy mnie byłeś ty.\nI chwile, nawet najbłahsze, pamiętać tak, by na zawsze\nZostało coś z tych dni, zostało coś z tych dni\n\nWięc chodź, chodź ze mną pomarzyć, odszukać pomóż mi\nTen czas, czas, co równoważy szaro przeżyte dni.\nJedna chwila wystarczy nam, ocal ją, niechaj trwa,\nKto wie, co jutro się zdarzy, więc próbuj, tak, jak ja.\n\nTak żyć, żyć, by coś zostało z tych dni, dni,\nKiedy się miało w ramionach cały świat, gdy przy mnie byłeś ty.\nI chwile, even najbłahsze, pamiętać tak, by na zawsze\nZostało coś z tych dni, zostało coś z tych dni\n\nNa na na\nNa na na na\nZostało coś z tych dni, zostało coś z tych dni!",
+      "notes": ""
+    }
+  ],
+  "order": [
+    "zycie-to-krotki-sen",
+    "by-cos-zostao-z-tamtych-lat"
+  ]
+}

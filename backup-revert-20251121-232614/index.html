@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icons/icon-512.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <!-- Inline tiny SVG favicon to avoid 404 and ensure quick visibility in tabs -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='100%25' height='100%25' fill='%232563eb'/%3E%3Ctext x='50%25' y='55%25' font-size='18' font-family='Arial,Helvetica,sans-serif' fill='%23fff' text-anchor='middle'%3E♪%3C/text%3E%3C/svg%3E" />
+  <title>Śpiewnik - Kopia</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+  <div class="toolbar">
+    <button id="hamburgerMenu" class="hamburger-menu" type="button" aria-label="Pokaż menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <div id="toolbarButtons" class="toolbar-buttons">
+      <label class="profile-select">
+        <span>Profil:</span>
+        <select id="profileSelect">
+          <option value="instrumentalist">Instrumentalista</option>
+          <option value="vocalist">Wokalista</option>
+        </select>
+      </label>
+      <!-- font size controls removed from toolbar (per user request) -->
+      <button id="addSongBtn" type="button">Dodaj utwór</button>
+      <button id="saveSongbookBtn" type="button">Zapisz zmiany</button>
+      <button id="importJsonBtn" type="button">Wczytaj JSON</button>
+      <button id="clearSongbookBtn" type="button">Wyczyść dane</button>
+  <button id="clearCacheBtn" type="button">Wyczyść cache</button>
+  <button id="lockTocBtn" type="button" aria-pressed="false" class="icon-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 17a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm6-8h-1V7a5 5 0 10-10 0v2H6a2 2 0 00-2 2v7a2 2 0 002 2h12a2 2 0 002-2v-7a2 2 0 00-2-2zm-8-2a3 3 0 116 0v2H10V7z"/></svg>
+        <span class="icon-label">Zablokuj</span>
+      </button>
+      <button id="exportPdfBtn" type="button">Drukuj / PDF</button>
+      <!-- px-per-beat removed from top toolbar (controlled per-song) -->
+      <button id="helpBtn" type="button">Instrukcja obsługi</button>
+      <button id="themeToggle" type="button" data-mode="light" aria-pressed="false">Tryb nocny</button>
+    </div>
+  </div>
+
+  <main class="songbook-container">
+    <header>
+      <h1>Śpiewnik - Kopia</h1>
+      <p class="subtitle">Zarządzaj repertuarem, transponuj akordy i drukuj zestawienia jednym kliknięciem.</p>
+    </header>
+
+    <section class="toc" aria-labelledby="tocHeading">
+      <h2 id="tocHeading">Spis treści</h2>
+      <ol id="tocList"></ol>
+    </section>
+
+    <section class="songs-container" id="songsContainer" aria-live="polite">
+      <p class="loading-message">Wczytywanie utworów...</p>
+    </section>
+  </main>
+
+  <button id="backToTop" type="button" title="Wróć do spisu treści">&uarr;<span>Wróć do spisu treści</span></button>
+
+  <div id="helpModal" class="modal" hidden>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="helpHeading">
+      <h2 id="helpHeading">Instrukcja obsługi</h2>
+      <div class="modal-body">
+        <p>Ten śpiewnik działa w przeglądarce i pozwala wygodnie zarządzać repertuarem całego zespołu. Możesz z niego korzystać na telefonie, tablecie lub komputerze – także bez Internetu.</p>
+
+        <h3>🔹 Pierwsze kroki</h3>
+        <ul>
+          <li>Otwórz link do śpiewnika w swojej przeglądarce.</li>
+          <li>Na górze znajdziesz przyciski do dodawania, zapisywania, drukowania itp. Ikona ☰ (hamburger) chowa lub pokazuje cały pasek - widoczne na telefonie, w przypadku wąskich ekranów.</li>
+          <li>Po lewej stronie jest spis treści – kliknij tytuł, aby przejść do wybranego utworu.</li>
+          <li>Przycisk „↑ Wróć do spisu treści” przenosi z powrotem na początek.</li>
+        </ul>
+
+        <h3>🔹 Praca bez Internetu</h3>
+        <ul>
+          <li>W Safari, Chrome lub Edge wybierz opcję „Dodaj do ekranu początkowego” lub „Zainstaluj aplikację”.</li>
+          <li>Po zainstalowaniu śpiewnik działa jak zwykła aplikacja – uruchamia się z ikony i działa offline.</li>
+          <li>Offline zapamiętuje ostatnią wersję śpiewnika (dopóki nie usuniesz danych przeglądarki).</li>
+        </ul>
+        <div class="help-illustrations">
+          <figure>
+            <img src="img/komputer.png" alt="Ikona instalacji aplikacji w przeglądarce" decoding="async" loading="lazy" />
+            <figcaption>Windows / Chrome</figcaption>
+          </figure>
+          <figure>
+            <img src="img/tablet.png" alt="Przycisk Do ekranu głównego w systemie iPadOS" decoding="async" loading="lazy" />
+            <figcaption>iOS / iPadOS</figcaption>
+          </figure>
+        </div>
+
+        <h3>🔹 Zapis repertuaru i kopie zapasowe</h3>
+        <ul>
+          <li><strong>Zapisz zmiany</strong> – zapisuje wszystkie utwory i kolejność w pamięci Twojego urządzenia oraz pobiera plik <code>.json</code> z kopią zapasową.</li>
+          <li>Plik możesz zachować na dysku lub wysłać innym członkom zespołu – każdy wczyta go u siebie i dostanie identyczny zestaw piosenek.</li>
+          <li>Ważne (głownie dla systemów iOS) – po pobraniu pliku json wybrać potem "zachowaj w plikach"</li>
+          <li>Plik ma nazwę w stylu <code>spiewnik-profil-data-godzina.json</code> i zawiera kompletny repertuar.</li>
+        </ul>
+
+        <h3>🔹 Wczytywanie repertuaru z pliku</h3>
+        <ul>
+          <li><strong>Wczytaj JSON</strong> – użyj tej opcji, aby przywrócić swoją kopię lub wgrać repertuar od kogoś z zespołu.</li>
+          <li>Po wybraniu pliku śpiewnik automatycznie odtworzy utwory, akordy i ich kolejność.</li>
+        </ul>
+        <p><strong>⚠️ Uwaga:</strong> Twoje obecne zmiany zostaną zastąpione danymi z pliku, więc najpierw zapisz kopię zapasową.</p>
+
+        <h3>🔹 Edycja i transpozycja</h3>
+        <ul>
+          <li><strong>Dodaj utwór</strong> – wpisz tytuł i tekst, a piosenka pojawi się na końcu listy.</li>
+          <li>Możesz przeciągać tytuły w spisie treści, żeby zmieniać kolejność piosenek.</li>
+          <li>W treści piosenki edytujesz słowa i akordy bezpośrednio.</li>
+          <li>Strzałki „▲ / ▼” obok akordów podnoszą lub obniżają tonację (transpozycja).</li>
+        </ul>
+
+        <h3>🔹 Profile widoków</h3>
+        <ul>
+          <li><strong>Instrumentalista</strong> – pokazuje tekst i akordy, umożliwia transpozycję.</li>
+          <li><strong>Wokalista</strong> – wyświetla tylko tekst, bez akordów (czytelniejsze na scenie).</li>
+        </ul>
+
+        <h3>🔹 Druk i udostępnianie</h3>
+        <ul>
+          <li><strong>Drukuj / PDF</strong> – otwiera okno drukowania; można zapisać śpiewnik jako plik PDF lub wydrukować (zawsze w jasnym motywie).</li>
+          <li><strong>Tryb nocny</strong> – przełącza ciemny motyw, przydatny przy słabym świetle.</li>
+        </ul>
+
+        <h3>🔹 Reset i przywracanie</h3>
+        <ul>
+          <li>Jeśli chcesz zacząć od zera, użyj „Wyczyść dane”.</li>
+          <li>Aby wrócić do wcześniejszej wersji, wczytaj ostatnią kopię repertuaru (pliki <code>.json</code>, które zapisałeś).</li>
+        </ul>
+      </div>
+      <div class="modal-actions">
+          <button id="helpLockBtn" type="button" class="icon-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 17a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm6-8h-1V7a5 5 0 10-10 0v2H6a2 2 0 00-2 2v7a2 2 0 002 2h12a2 2 0 002-2v-7a2 2 0 00-2-2zm-8-2a3 3 0 116 0v2H10V7z"/></svg>
+            <span class="icon-label">Zablokuj</span>
+          </button>
+        <button id="closeHelpBtn" type="button">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="addSongModal" class="modal" hidden>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="addSongHeading">
+      <h2 id="addSongHeading">Dodaj nowy utwór</h2>
+      <label for="songTitle">Tytuł utworu</label>
+      <input id="songTitle" type="text" placeholder="np. Deszcz jesienny" required />
+      <label for="songLyrics">Tekst piosenki</label>
+      <textarea id="songLyrics" rows="10" placeholder="Wklej tekst, każdy wers w nowej linii..." required></textarea>
+      <div class="modal-actions">
+        <button id="confirmAddSong" class="primary" type="button">Dodaj</button>
+        <button id="cancelAddSong" type="button">Anuluj</button>
+      </div>
+    </div>
+  </div>
+
+  <noscript>
+    <p style="padding: 16px; text-align: center;">Włącz JavaScript, aby korzystać ze śpiewnika.</p>
+  </noscript>
+
+  <input id="importJsonInput" type="file" accept="application/json" hidden />
+  <script src="js/serviceWorkerGuard.js" defer></script>
+  <script src="js/import-fallback.js" defer></script>
+  <script src="js/fallback-render.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.min.js" defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
