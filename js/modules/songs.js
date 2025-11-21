@@ -149,28 +149,28 @@ function createTransposeControls() {
   chordsDec.type = 'button';
   chordsDec.className = 'tab-toggle-btn song-font-chords-decrease';
   chordsDec.title = 'Zmniejsz czcionkę akordów';
-  chordsDec.innerHTML = '🎸 A-';
+  chordsDec.innerHTML = '<span class="icon">🎸</span><span class="label">A-</span>';
   controls.appendChild(chordsDec);
 
   const chordsInc = document.createElement('button');
   chordsInc.type = 'button';
   chordsInc.className = 'tab-toggle-btn song-font-chords-increase';
   chordsInc.title = 'Zwiększ czcionkę akordów';
-  chordsInc.innerHTML = '🎸 A+';
+  chordsInc.innerHTML = '<span class="icon">🎸</span><span class="label">A+</span>';
   controls.appendChild(chordsInc);
 
   const lyricsDec = document.createElement('button');
   lyricsDec.type = 'button';
   lyricsDec.className = 'tab-toggle-btn song-font-lyrics-decrease';
   lyricsDec.title = 'Zmniejsz czcionkę tekstu';
-  lyricsDec.innerHTML = '🎤 A-';
+  lyricsDec.innerHTML = '<span class="icon">🎤</span><span class="label">A-</span>';
   controls.appendChild(lyricsDec);
 
   const lyricsInc = document.createElement('button');
   lyricsInc.type = 'button';
   lyricsInc.className = 'tab-toggle-btn song-font-lyrics-increase';
   lyricsInc.title = 'Zwiększ czcionkę tekstu';
-  lyricsInc.innerHTML = '🎤 A+';
+  lyricsInc.innerHTML = '<span class="icon">🎤</span><span class="label">A+</span>';
   controls.appendChild(lyricsInc);
 
   // Reset fonts for this song

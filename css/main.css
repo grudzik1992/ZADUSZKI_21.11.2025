@@ -505,7 +505,7 @@ body.theme-dark .song .chords {
   font-size: 14px;
   margin-left: 8px;
   cursor: pointer;
-  min-width: 120px;
+  min-width: 96px;
   max-width: 220px;
   white-space: normal; /* allow wrapping */
   text-align: center;
@@ -517,6 +517,15 @@ body.theme-dark .song .chords {
   min-height: 44px;
   line-height: 1.1;
  }
+
+.tab-toggle-btn .icon {
+  display: inline-block;
+  margin-right: 6px;
+  line-height: 1;
+}
+.tab-toggle-btn .label {
+  display: inline-block;
+}
 
   .transpose-controls .import-btn {
   padding: 10px 14px;
@@ -600,6 +609,21 @@ body.theme-dark .song .chords {
 @media (max-width: 720px) {
   .song-fields {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Extra small screens: prefer icon-only compact controls to avoid overflow */
+@media (max-width: 540px) {
+  .tab-toggle-btn .label {
+    display: none;
+  }
+  .transpose-controls .tab-toggle-btn {
+    min-width: 48px;
+    padding: 8px;
+  }
+  .transpose-controls .import-btn {
+    min-width: 48px;
+    padding: 8px;
   }
 }
 
