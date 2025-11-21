@@ -924,4 +924,74 @@ document.addEventListener('DOMContentLoaded', () => {
       console.warn('Błąd pobierania JSON:', error);
     }
   }
+
+    // Debug helpers exposed for quick testing from the console
+    // Usage: window.debugParseTab(tabText) -> returns parsed object
+    //        window.testPlayTab(tabText, bpm) -> attempts MIDI playback or Tone.js fallback
+    window.debugParseTab = function (tabText) {
+      try {
+        const parsed = parseTab(tabText || '');
+        console.log('[debugParseTab] parsed:', parsed);
+        return parsed;
+      } catch (err) {
+        console.error('[debugParseTab] parse error', err);
+        return null;
+      }
+    };
+
+    window.testPlayTab = async function (tabText, bpm = 90) {
+      try {
+        const parsed = parseTab(tabText || '');
+        console.log('[testPlayTab] events:', parsed.events?.slice(0, 50) || []);
+        if (!parsed || !parsed.events || !parsed.events.length) {
+          console.warn('[testPlayTab] No events parsed');
+          return parsed;
+        }
+        const tempo = Number(bpm) || 90;
+        // Try MIDI first
+        try {
+          if (typeof navigator.requestMIDIAccess === 'function') {
+            await initMidiAccess();
+            if (_midiOutput) {
+              playViaMidi(parsed, tempo);
+              console.info('[testPlayTab] Playing via Web MIDI on', _midiOutput.name || _midiOutput.id);
+              return parsed;
+            }
+          }
+        } catch (err) {
+          console.warn('[testPlayTab] MIDI playback failed, falling back to Tone:', err);
+        }
+
+        if (window.Tone) {
+          try {
+            await Tone.start();
+          } catch (e) { /* ignore */ }
+          try { Tone.Transport.stop(); } catch (e) { /* ignore */ }
+          try { Tone.Transport.cancel(); } catch (e) { /* ignore */ }
+          Tone.Transport.bpm.value = tempo;
+          const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+          _currentSynth = synth;
+          parsed.events.forEach(evt => {
+            const timeSec = (evt.timeBeats * 60) / tempo;
+            const durSec = (evt.durationBeats * 60) / tempo;
+            const when = `${timeSec}s`;
+            const dur = `${durSec}s`;
+            Tone.Transport.schedule((time) => {
+              const notes = evt.notes.map(n => {
+                try { return Tone.Frequency(Number(n), 'midi').toNote(); } catch (err) { return n; }
+              });
+              synth.triggerAttackRelease(notes, dur, time);
+            }, when);
+          });
+          Tone.Transport.start('+0.05');
+          console.info('[testPlayTab] Playing via Tone.js (synth)');
+        } else {
+          console.warn('[testPlayTab] Tone.js not available in page');
+        }
+        return parsed;
+      } catch (err) {
+        console.error('[testPlayTab] error', err);
+        return null;
+      }
+    };
 });
