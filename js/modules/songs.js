@@ -328,32 +328,37 @@ export function upgradeExistingSongs(songsHost, options = {}) {
     if (!song || song.dataset.upgraded === '1') return;
     const songContent = $('.song-content', song) || song;
     if ($('.song-fields', songContent)) {
-      song.dataset.upgraded = '1';
-      if (!enableTranspose) {
-        const controls = createTransposeControls();
-        content.appendChild(controls);
-        // wire up BPM and play button to dispatch custom events handled by app
-        const bpmInput = controls.querySelector('.bpm-input');
-        const playBtn = controls.querySelector('.song-play-btn');
-        if (bpmInput) bpmInput.value = songData.bpm || '';
-        if (playBtn) {
-          playBtn.addEventListener('click', () => {
-            const isPlaying = playBtn.getAttribute('aria-pressed') === 'true';
-            const bpm = Number(bpmInput?.value) || 0;
-            const detail = { id: songData.id, bpm };
-            if (!isPlaying) {
-              playBtn.setAttribute('aria-pressed', 'true');
-              playBtn.textContent = '⏸';
-              // dispatch play event from songDiv so app can handle scrolling
-              songDiv.dispatchEvent(new CustomEvent('song:play', { detail, bubbles: true }));
-            } else {
-              playBtn.setAttribute('aria-pressed', 'false');
-              playBtn.textContent = '▶';
-              songDiv.dispatchEvent(new CustomEvent('song:stop', { detail, bubbles: true }));
-            }
-          });
+        song.dataset.upgraded = '1';
+        if (enableTranspose) {
+          const controls = createTransposeControls();
+          const heading = $('h2', songContent);
+          if (heading) {
+            heading.insertAdjacentElement('afterend', controls);
+          } else {
+            songContent.prepend(controls);
+          }
+
+          // wire up BPM and play button to dispatch custom events handled by app
+          const bpmInput = controls.querySelector('.bpm-input');
+          const playBtn = controls.querySelector('.song-play-btn');
+          if (bpmInput && typeof song.dataset.bpm === 'string') bpmInput.value = song.dataset.bpm || '';
+          if (playBtn) {
+            playBtn.addEventListener('click', () => {
+              const isPlaying = playBtn.getAttribute('aria-pressed') === 'true';
+              const bpm = Number(bpmInput?.value) || 0;
+              const detail = { id: (heading && heading.id) || song.dataset.id || '', bpm };
+              if (!isPlaying) {
+                playBtn.setAttribute('aria-pressed', 'true');
+                playBtn.textContent = '⏸';
+                song.dispatchEvent(new CustomEvent('song:play', { detail, bubbles: true }));
+              } else {
+                playBtn.setAttribute('aria-pressed', 'false');
+                playBtn.textContent = '▶';
+                song.dispatchEvent(new CustomEvent('song:stop', { detail, bubbles: true }));
+              }
+            });
+          }
         }
-      }
       if (!showChords) {
         const chordsEl = $('.song-field.chords-field .chords', songContent);
         const chordsText = normalizeMultiline(chordsEl?.innerText || '').trimEnd();

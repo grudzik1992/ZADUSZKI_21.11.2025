@@ -17,6 +17,7 @@ function storedTheme() {
 function applyTheme(mode, toggle, persist = true) {
   const useDark = mode === THEME_DARK;
   document.body.classList.toggle('theme-dark', useDark);
+  console.debug('[theme] applyTheme', { mode, useDark, hasToggle: !!toggle, persist });
   if (toggle) {
     toggle.dataset.mode = useDark ? THEME_DARK : THEME_LIGHT;
     toggle.setAttribute('aria-pressed', useDark ? 'true' : 'false');
@@ -43,6 +44,7 @@ export function initTheme(toggle) {
     (document.body.classList.contains('theme-dark') ? THEME_DARK : null) ||
     (prefersDark ? THEME_DARK : THEME_LIGHT);
 
+  console.debug('[theme] initTheme', { savedTheme, prefersDark, initialTheme, toggleExists: !!toggle });
   applyTheme(initialTheme, toggle, false);
 
   if (toggle) {
@@ -50,8 +52,33 @@ export function initTheme(toggle) {
     toggle.setAttribute('aria-label', 'Przełącz tryb motywu');
     toggle.addEventListener('click', () => {
       const next = toggle.dataset.mode === THEME_DARK ? THEME_LIGHT : THEME_DARK;
+      console.debug('[theme] toggle clicked, next=', next);
       applyTheme(next, toggle);
     });
+  }
+
+  // Fail-safe: if toggle element wasn't provided or is added later (e.g. by fallback UI),
+  // attach a delegated click handler so clicks on `#themeToggle` still toggle theme.
+  try {
+    if (!toggle) {
+      if (!document.__themeDelegatedHandlerAdded) {
+        const delegated = (event) => {
+          const target = event.target;
+          const clicked = target && (target.id === 'themeToggle' || target.closest && target.closest('#themeToggle'));
+          if (!clicked) return;
+          // ensure we use the actual element (if present) to update aria/text
+          const el = document.getElementById('themeToggle');
+          const current = document.body.classList.contains('theme-dark') ? THEME_DARK : THEME_LIGHT;
+          const next = current === THEME_DARK ? THEME_LIGHT : THEME_DARK;
+          console.debug('[theme] delegated toggle click, next=', next, 'elExists=', !!el);
+          applyTheme(next, el || null);
+        };
+        document.addEventListener('click', delegated);
+        document.__themeDelegatedHandlerAdded = true;
+      }
+    }
+  } catch (err) {
+    // swallow any errors from adding delegated handler
   }
 
   if (!savedTheme && typeof window.matchMedia === 'function') {
