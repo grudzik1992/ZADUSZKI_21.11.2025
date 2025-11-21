@@ -1,6 +1,7 @@
 import { $, scrollToSong } from './modules/dom.js';
 import { initTheme } from './modules/theme.js';
 import { observeChordFieldEdits } from './modules/transpose.js';
+import { parseTab } from './modules/tabParser.js';
 import {
   addSong,
   upgradeExistingSongs,
@@ -313,10 +314,70 @@ document.addEventListener('DOMContentLoaded', () => {
   refs.songsHost?.addEventListener('song:play', (e) => {
     const { id, bpm } = e.detail || {};
     startAutoScroll({ id, bpm });
+    // also start audio playback if tablature exists
+    startAudioPlayback({ id, bpm });
   });
   refs.songsHost?.addEventListener('song:stop', () => {
     stopAutoScroll();
+    stopAudioPlayback();
   });
+
+  let _currentSynth = null;
+  function startAudioPlayback({ id, bpm }) {
+    try {
+      const songEl = document.getElementById(id)?.closest('.song');
+      if (!songEl) return;
+      const tabText = (songEl.dataset.tab || '') || songEl.querySelector('.tablature')?.innerText || '';
+      if (!tabText || !tabText.trim()) return;
+      const parsed = parseTab(tabText);
+      if (!parsed || !parsed.events || !parsed.events.length) {
+        console.warn('No events parsed for audio');
+        return;
+      }
+      const tempo = Number(bpm) || Number(localStorage.getItem('songbook-bpm')) || 90;
+      // prepare synth
+      if (window.Tone && typeof window.Tone !== 'undefined') {
+        const Tone = window.Tone;
+        Tone.Transport.stop();
+        Tone.Transport.cancel();
+        Tone.Transport.bpm.value = tempo;
+        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+        _currentSynth = synth;
+        // schedule events
+        parsed.events.forEach(evt => {
+          const timeSec = (evt.timeBeats * 60) / tempo;
+          const durSec = (evt.durationBeats * 60) / tempo;
+          const when = `${timeSec}s`;
+          const dur = `${durSec}s`;
+          Tone.Transport.schedule((time) => {
+            // convert midi numbers to frequency string
+            const freqs = evt.notes.map(n => Tone.Frequency(n, 'midi'));
+            synth.triggerAttackRelease(freqs, dur, time);
+          }, when);
+        });
+        Tone.Transport.start('+0.1');
+      } else {
+        console.warn('Tone.js not available');
+      }
+    } catch (err) {
+      console.error('Audio playback error:', err);
+    }
+  }
+
+  function stopAudioPlayback() {
+    try {
+      if (window.Tone && typeof window.Tone !== 'undefined') {
+        window.Tone.Transport.stop();
+        window.Tone.Transport.cancel();
+      }
+      if (_currentSynth) {
+        _currentSynth.dispose?.();
+        _currentSynth = null;
+      }
+    } catch (err) {
+      console.warn('Error stopping audio:', err);
+    }
+  }
 
   function initToolbarActions() {
     const { saveBtn, clearBtn } = refs;
