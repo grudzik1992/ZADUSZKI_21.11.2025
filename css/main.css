@@ -1,7 +1,7 @@
 :root {
   --bg: #fdfdfd;
   --fg: #1a1a1a;
-  --base-font-size: 18px;
+  --base-font-size: 20px;
   --muted: #d0d5dd;
   --card: #ffffff;
   --border: #e5e7eb;
@@ -90,8 +90,10 @@ h2 {
   top: 0;
   z-index: 100;
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   padding: 10px 16px;
   background: var(--card);
   border-bottom: 1px solid var(--border);
@@ -103,10 +105,12 @@ h2 {
   border: none;
   background: var(--button-bg);
   color: var(--button-fg);
-  padding: 8px 14px;
+  padding: 6px 10px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
   transition: background 0.25s ease, color 0.25s ease, transform 0.15s ease;
 }
 
@@ -154,9 +158,10 @@ h2 {
 
 .toolbar-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .icon-btn {
@@ -193,6 +198,19 @@ h2 {
   padding: 4px 6px;
   background: var(--card);
   color: var(--fg);
+}
+
+.profile-select {
+  min-width: 160px;
+}
+
+.toolbar .px-per-beat input[type="number"] {
+  width: 56px;
+}
+
+/* Ensure toolbar does not overlap content on small heights */
+.songbook-container {
+  padding-top: 22px; /* leave room when toolbar wraps */
 }
 
 .profile-select select:focus {
