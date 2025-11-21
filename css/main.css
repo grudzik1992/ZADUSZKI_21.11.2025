@@ -32,7 +32,8 @@ body {
 body {
   background: var(--bg);
   color: var(--fg);
-  font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif;
+  /* Increased base font-size for better readability */
+  font: 18px/1.65 system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif;
   transition: background 0.3s ease, color 0.3s ease;
 }
 
@@ -73,13 +74,13 @@ a:hover {
 
 h1 {
   text-align: center;
-  font-size: 36px;
+  font-size: 40px;
   margin: 16px 0 4px;
 }
 
 h2 {
   text-align: left;
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 6px;
 }
 
@@ -369,6 +370,19 @@ body.theme-dark .delete-song-btn:hover {
   margin-top: 12px;
 }
 
+/* Make tablature field span full width of grid */
+.song-field.tablature-field {
+  grid-column: 1 / -1;
+}
+
+.song .tablature {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  white-space: pre;
+  overflow-x: auto;
+  min-height: 160px;
+  font-weight: 600;
+}
+
 .song-field {
   display: flex;
   flex-direction: column;
@@ -446,6 +460,17 @@ body.theme-dark .song .chords {
   border-radius: 50%;
   font-size: 20px;
   line-height: 1;
+  cursor: pointer;
+}
+
+.transpose-controls .tab-toggle-btn {
+  border: 1px solid var(--border);
+  background: var(--button-bg);
+  color: var(--button-fg);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-left: 6px;
   cursor: pointer;
 }
 

@@ -103,7 +103,17 @@ document.addEventListener('DOMContentLoaded', () => {
     tocList: refs.tocList,
     songsHost: refs.songsHost,
     scrollToSong: scrollWithOffset,
-    onOrderChange: (orderIds) => saveOrder(orderIds),
+    onOrderChange: (orderIds) => {
+      // Apply the new order to the songs DOM so TOC reordering actually
+      // reflects in the real song list, then persist it to localStorage.
+      try {
+        applyOrder(refs.tocList, refs.songsHost, orderIds);
+        renumberSongs(refs.tocList, refs.songsHost);
+        saveOrder(orderIds);
+      } catch (err) {
+        console.warn('Błąd podczas stosowania kolejności TOC:', err);
+      }
+    },
   });
 
   hydrateSongs();
@@ -525,6 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chords: typeof song?.chords === 'string' ? song.chords : '',
         number: index + 1,
         notes: typeof song?.notes === 'string' ? song.notes : '',
+        tab: typeof song?.tab === 'string' ? song.tab : '',
       };
     });
 

@@ -5,12 +5,14 @@ const PLACEHOLDERS = {
   chords: 'Dodaj akordy (opcjonalnie)',
   lyrics: 'Dodaj tekst piosenki...',
   notes: 'Dodaj notatki (widoczne tylko dla wokalisty)...',
+  tab: 'Dodaj tabulaturę (opcjonalnie)'
 };
 
 const FIELD_LABELS = {
   chords: 'Akordy',
   lyrics: 'Tekst',
   notes: 'Notatki',
+  tab: 'Tabulatura',
 };
 
 function slugify(text) {
@@ -42,12 +44,13 @@ function createEditableField(type, value, { normalize } = { normalize: true }) {
   label.textContent = FIELD_LABELS[type] || 'Pole';
 
   const editable = document.createElement('div');
-  editable.className = type;
+  // Normalize class name for tab -> 'tablature' so styles/serialization match
+  editable.className = type === 'tab' ? 'tablature' : type;
   editable.contentEditable = 'true';
   editable.dataset.placeholder = PLACEHOLDERS[type] || '';
   editable.dataset.field = type;
   editable.setAttribute('role', 'textbox');
-  editable.setAttribute('spellcheck', type === 'chords' ? 'false' : 'true');
+  editable.setAttribute('spellcheck', type === 'chords' || type === 'tab' ? 'false' : 'true');
 
   if (type === 'chords') {
     // IMPORTANT: do not modify user's input during editing. Create the
@@ -79,6 +82,14 @@ function createSongContent(songData, options) {
   if (showChords) {
     const normalizedChords = trimTrailingEmptyLines(normalizeMultiline(chords).split('\n'));
     fieldsWrap.appendChild(createEditableField('chords', normalizedChords, { normalize: normalizeChords }));
+  }
+
+  // If a tablature block exists for this song, render it and make it span full width
+  if (songData && typeof songData.tab === 'string' && songData.tab.trim()) {
+    const tabText = songData.tab || '';
+    const tabField = createEditableField('tab', tabText, { normalize: false });
+    tabField.classList.add('tablature-field');
+    fieldsWrap.appendChild(tabField);
   }
 
   const normalizedLyrics = trimTrailingEmptyLines(normalizeMultiline(lyrics).split('\n'));
@@ -128,6 +139,7 @@ function createSongElement(songData, options, songsHost) {
   songDiv.dataset.upgraded = '1';
   songDiv.dataset.chords = songData.chords || '';
   songDiv.dataset.notes = notesValue || '';
+  songDiv.dataset.tab = songData.tab || '';
   if (!showChords) {
     songDiv.classList.add('song--lyrics-only');
   } else {
@@ -147,6 +159,30 @@ function createSongElement(songData, options, songsHost) {
   if (enableTranspose) {
     const controls = createTransposeControls();
     content.appendChild(controls);
+    // Add a simple tab toggle control next to transpose controls
+    const tabToggle = document.createElement('button');
+    tabToggle.type = 'button';
+    tabToggle.className = 'tab-toggle-btn';
+    tabToggle.textContent = songData.tab ? 'Usuń tabulaturę' : 'Dodaj tabulaturę';
+    tabToggle.title = 'Dodaj lub usuń tabulaturę dla tego utworu';
+    tabToggle.addEventListener('click', () => {
+      const fieldsWrap = songDiv.querySelector('.song-fields');
+      if (!fieldsWrap) return;
+      const existing = fieldsWrap.querySelector('.song-field.tablature-field');
+      if (existing) {
+        existing.remove();
+        delete songDiv.dataset.tab;
+        tabToggle.textContent = 'Dodaj tabulaturę';
+        return;
+      }
+      const tabContent = songDiv.dataset.tab || '';
+      const tabField = createEditableField('tab', tabContent, { normalize: false });
+      tabField.classList.add('tablature-field');
+      fieldsWrap.appendChild(tabField);
+      songDiv.dataset.tab = tabContent;
+      tabToggle.textContent = 'Usuń tabulaturę';
+    });
+    controls.appendChild(tabToggle);
   }
   content.appendChild(fields);
   songDiv.appendChild(content);
@@ -367,7 +403,14 @@ export function serializeSongs(songsHost) {
     if (notesEl) {
       song.dataset.notes = notes;
     }
-    songs.push({ title, id, chords, lyrics, notes });
+    const tabEl = song.querySelector('.tablature');
+    const tab = tabEl
+      ? normalizeMultiline(tabEl.innerText || '').trimEnd()
+      : (typeof song.dataset.tab === 'string' ? normalizeMultiline(song.dataset.tab || '').trimEnd() : '');
+    if (tabEl) {
+      song.dataset.tab = tab;
+    }
+    songs.push({ title, id, chords, lyrics, notes, tab });
   });
   return songs;
 }

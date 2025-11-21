@@ -1,11 +1,11 @@
 {
-  "name": "Śpiewnik Zaduszki 2025",
-  "short_name": "Śpiewnik",
+  "name": "Śpiewnik (kopia)",
+  "short_name": "ŚpiewnikKopia",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#fdfdfd",
   "theme_color": "#2563eb",
-  "description": "Śpiewnik z akordami - Zaduszki 2025",
+  "description": "Kopia śpiewnika z akordami — prywatna kopia aplikacji.",
   "icons": [
     {
       "src": "icons/icon-192.png",
