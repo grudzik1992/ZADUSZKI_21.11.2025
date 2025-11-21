@@ -367,6 +367,8 @@ body.theme-dark .delete-song-btn:hover {
   margin: 20px 0;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
   transition: background 0.3s ease, border-color 0.3s ease;
+  /* allow per-song font-size via --song-font-size; fallback to global --base-font-size */
+  font: var(--song-font-size, var(--base-font-size))/1.65 system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif;
 }
 
 .song--jump-target {

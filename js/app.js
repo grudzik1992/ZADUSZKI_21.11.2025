@@ -7,6 +7,7 @@ import {
   upgradeExistingSongs,
   renderSongs,
   serializeSongs,
+  serializeSongsWithFont,
   renumberSongs,
   applyOrder,
   collectOrder,
@@ -445,7 +446,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleSave() {
     window.alert('Po kliknięciu OK zapiszemy śpiewnik w pamięci przeglądarki i pobierzemy plik JSON z aktualną wersją.');
     try {
-      const songs = serializeSongs(refs.songsHost);
+      const songs = serializeSongsWithFont(refs.songsHost);
       const order = collectOrder(refs.tocList);
       saveSongs(songs);
       setNotationPreference('pl');
@@ -714,6 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
         number: index + 1,
         notes: typeof song?.notes === 'string' ? song.notes : '',
         tab: typeof song?.tab === 'string' ? song.tab : '',
+        font: typeof song?.font === 'string' ? song.font : (typeof song?.fontSize === 'string' ? song.fontSize : ''),
       };
     });
 

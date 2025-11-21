@@ -144,6 +144,20 @@ function createTransposeControls() {
   playBtn.title = 'Play / Pause auto-scroll';
   playBtn.textContent = '▶';
   controls.appendChild(playBtn);
+  // Per-song font size controls
+  const fontDec = document.createElement('button');
+  fontDec.type = 'button';
+  fontDec.className = 'tab-toggle-btn song-font-decrease';
+  fontDec.title = 'Zmniejsz czcionkę tego utworu';
+  fontDec.textContent = 'A-';
+  controls.appendChild(fontDec);
+
+  const fontInc = document.createElement('button');
+  fontInc.type = 'button';
+  fontInc.className = 'tab-toggle-btn song-font-increase';
+  fontInc.title = 'Zwiększ czcionkę tego utworu';
+  fontInc.textContent = 'A+';
+  controls.appendChild(fontInc);
   // Import .txt input (hidden) and button
   const importInput = document.createElement('input');
   importInput.type = 'file';
@@ -205,6 +219,10 @@ function createSongElement(songData, options, songsHost) {
   songDiv.dataset.chords = songData.chords || '';
   songDiv.dataset.notes = notesValue || '';
   songDiv.dataset.tab = songData.tab || '';
+  if (songData.font) {
+    songDiv.dataset.fontSize = songData.font;
+    songDiv.style.setProperty('--song-font-size', songData.font);
+  }
   if (!showChords) {
     songDiv.classList.add('song--lyrics-only');
   } else {
@@ -224,6 +242,25 @@ function createSongElement(songData, options, songsHost) {
   if (enableTranspose) {
     const controls = createTransposeControls();
     content.appendChild(controls);
+      // wire up per-song font controls
+      const fontDecBtn = controls.querySelector('.song-font-decrease');
+      const fontIncBtn = controls.querySelector('.song-font-increase');
+      const clamp = (v) => Math.max(12, Math.min(40, v));
+      const applyFont = (delta) => {
+        const current = window.getComputedStyle(songDiv).getPropertyValue('--song-font-size') || '';
+        let cur = 0;
+        if (current && current.trim()) cur = parseFloat(current.replace('px','')) || 0;
+        if (!cur) {
+          const base = getComputedStyle(document.documentElement).getPropertyValue('--base-font-size') || '18px';
+          cur = parseFloat(base.replace('px','')) || 18;
+        }
+        const next = clamp(Math.round((cur + delta) * 10) / 10);
+        const val = `${next}px`;
+        songDiv.dataset.fontSize = val;
+        songDiv.style.setProperty('--song-font-size', val);
+      };
+      fontDecBtn?.addEventListener('click', () => applyFont(-1));
+      fontIncBtn?.addEventListener('click', () => applyFont(1));
     // Add a simple tab toggle control next to transpose controls
     const tabToggle = document.createElement('button');
     tabToggle.type = 'button';
@@ -507,6 +544,17 @@ export function serializeSongs(songsHost) {
       song.dataset.bpm = String(bpmVal);
     }
     songs.push({ title, id, chords, lyrics, notes, tab, bpm: bpmVal });
+  });
+  return songs;
+}
+
+// expose font if present when serializing
+export function serializeSongsWithFont(songsHost) {
+  const songs = serializeSongs(songsHost);
+  // enrich with font from dataset
+  $$('.song', songsHost).forEach((songEl, idx) => {
+    const font = songEl.dataset.fontSize || '';
+    if (font) songs[idx].font = font;
   });
   return songs;
 }
