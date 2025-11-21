@@ -353,6 +353,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   let _currentSynth = null;
+  let _midiAccess = null;
+  let _midiOutput = null;
+  let _midiTimers = [];
   async function startAudioPlayback({ id, bpm }) {
     try {
       const songEl = document.getElementById(id)?.closest('.song');
@@ -365,7 +368,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       const tempo = Number(bpm) || Number(localStorage.getItem('songbook-bpm')) || 90;
-      // prepare synth
+      // Prefer Web MIDI output if available and permitted by user/browser
+      const useMidi = typeof navigator.requestMIDIAccess === 'function';
+      // If Web MIDI is available, attempt MIDI playback first
+      if (useMidi) {
+        try {
+          await initMidiAccess();
+          if (_midiOutput) {
+            playViaMidi(parsed, tempo);
+            return;
+          }
+        } catch (err) {
+          console.warn('MIDI init failed, falling back to synth:', err);
+        }
+      }
+
+      // prepare synth (Tone.js fallback)
       if (window.Tone && typeof window.Tone !== 'undefined') {
         const Tone = window.Tone;
         try {
@@ -410,6 +428,63 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error('Audio playback error:', err);
     }
+  }
+
+  // Initialize Web MIDI access and pick a default output if available
+  async function initMidiAccess() {
+    if (_midiAccess && _midiOutput) return;
+    try {
+      _midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+      const outputs = Array.from(_midiAccess.outputs.values());
+      if (outputs && outputs.length) {
+        // pick the first available output
+        _midiOutput = outputs[0];
+        console.info('Selected MIDI output:', _midiOutput.name || _midiOutput.id);
+      } else {
+        _midiOutput = null;
+      }
+    } catch (err) {
+      _midiAccess = null;
+      _midiOutput = null;
+      throw err;
+    }
+  }
+
+  // Play parsed tab events via MIDI output
+  function playViaMidi(parsed, tempo) {
+    if (!parsed || !parsed.events || !parsed.events.length || !_midiOutput) return;
+    // clear previous timers
+    _midiTimers.forEach((t) => clearTimeout(t));
+    _midiTimers = [];
+    const start = performance.now();
+    parsed.events.forEach((evt) => {
+      const timeSec = (evt.timeBeats * 60) / tempo;
+      const durSec = (evt.durationBeats * 60) / tempo;
+      const whenMs = Math.max(0, Math.round((timeSec * 1000)));
+      const offMs = Math.max(0, Math.round((timeSec + durSec) * 1000));
+      // schedule Note On
+      const onTimer = setTimeout(() => {
+        try {
+          evt.notes.forEach((note) => {
+            const n = Number(note) & 0x7f;
+            // Note On on channel 0, velocity 100
+            _midiOutput.send([0x90, n, 100]);
+          });
+        } catch (err) { console.warn('MIDI send on error', err); }
+      }, whenMs);
+      _midiTimers.push(onTimer);
+      // schedule Note Off
+      const offTimer = setTimeout(() => {
+        try {
+          evt.notes.forEach((note) => {
+            const n = Number(note) & 0x7f;
+            // Note Off on channel 0
+            _midiOutput.send([0x80, n, 64]);
+          });
+        } catch (err) { console.warn('MIDI send off error', err); }
+      }, offMs);
+      _midiTimers.push(offTimer);
+    });
   }
 
   function stopAudioPlayback() {
