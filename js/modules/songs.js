@@ -193,18 +193,20 @@ function createTransposeControls() {
     const id = heading?.id || audioBtn.closest('.song')?.dataset.id || '';
     const detail = { id, bpm };
     // ensure AudioContext is resumed from user gesture
-    try {
-      if (window.Tone && typeof window.Tone.start === 'function') {
-        await window.Tone.start();
-      } else if (window.AudioContext || window.webkitAudioContext) {
-        try {
-          const ctx = window.audioContext || (window.AudioContext && new window.AudioContext());
-          if (ctx && typeof ctx.resume === 'function') await ctx.resume();
-        } catch (e) { /* ignore */ }
+      try {
+        if (window.Tone && typeof window.Tone.start === 'function') {
+          await window.Tone.start();
+          console.info('AudioContext resumed via Tone.start()');
+        } else if (window.AudioContext || window.webkitAudioContext) {
+          try {
+            const ctx = window.audioContext || (window.AudioContext && new window.AudioContext());
+            if (ctx && typeof ctx.resume === 'function') await ctx.resume();
+            console.info('AudioContext resumed via native AudioContext.resume()');
+          } catch (e) { /* ignore */ }
+        }
+      } catch (err) {
+        console.warn('Audio resume failed:', err);
       }
-    } catch (err) {
-      console.warn('Audio resume failed:', err);
-    }
 
     if (!isPlaying) {
       audioBtn.setAttribute('aria-pressed', 'true');

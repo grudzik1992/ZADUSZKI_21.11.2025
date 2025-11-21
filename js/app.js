@@ -369,6 +369,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const parsed = parseTab(tabText);
       if (!parsed || !parsed.events || !parsed.events.length) {
         console.warn('No events parsed for audio');
+        try {
+          // user-friendly alert so non-technical users see why nothing plays
+          window.alert('Brak rozpoznanych zdarzeń w tabulaturze. Upewnij się, że tabulatura została zapisana i zawiera linie z progami (6 linii tab).');
+        } catch (e) { /* ignore if alerts disabled */ }
         return;
       }
       const tempo = Number(bpm) || Number(localStorage.getItem('songbook-bpm')) || 90;
