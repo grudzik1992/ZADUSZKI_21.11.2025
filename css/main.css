@@ -560,9 +560,9 @@ body.theme-dark .song .chords {
   background: var(--button-bg);
   color: var(--button-fg);
   border: 1px solid var(--border);
-  min-width: 120px;
+  min-width: 88px;
   max-width: 220px;
-  font-size: 14px;
+  font-size: 12px;
   white-space: normal;
   text-align: center;
   word-break: break-word;

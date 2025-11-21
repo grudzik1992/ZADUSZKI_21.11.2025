@@ -1,5 +1,5 @@
 import { $, $$, normalizeMultiline, trimTrailingEmptyLines } from './dom.js';
-import { convertChordNotation, initTransposeControls, normalizeChordFieldDom } from './transpose.js';
+import { convertChordNotation, initTransposeControls, normalizeChordFieldDom, resetTransposeForSong } from './transpose.js';
 
 const PLACEHOLDERS = {
   chords: 'Dodaj akordy (opcjonalnie)',
@@ -361,11 +361,34 @@ function createSongElement(songData, options, songsHost) {
       controls.querySelector('.song-font-lyrics-decrease')?.addEventListener('click', () => applyLyricsFont(-1));
       controls.querySelector('.song-font-lyrics-increase')?.addEventListener('click', () => applyLyricsFont(1));
       controls.querySelector('.song-font-reset')?.addEventListener('click', () => {
-        // remove overrides and clear dataset
+        // remove font-size overrides and clear dataset
         songDiv.style.removeProperty('--song-chords-font-size');
         songDiv.style.removeProperty('--song-lyrics-font-size');
         delete songDiv.dataset.fontChords;
         delete songDiv.dataset.fontLyrics;
+
+        // reset any manual widths applied to chords/lyrics
+        try {
+          const chordsEl = songDiv.querySelector('.chords');
+          const lyricsEl = songDiv.querySelector('.lyrics');
+          if (chordsEl) {
+            chordsEl.style.removeProperty('width');
+          }
+          if (lyricsEl) {
+            lyricsEl.style.removeProperty('width');
+          }
+          delete songDiv.dataset.chordsWidth;
+          delete songDiv.dataset.lyricsWidth;
+        } catch (err) {
+          // ignore
+        }
+
+        // reset transpose level for the song if available
+        try {
+          resetTransposeForSong(songDiv);
+        } catch (err) {
+          // ignore if function unavailable
+        }
       });
     // Add a simple tab toggle control next to transpose controls
     const tabToggle = document.createElement('button');
