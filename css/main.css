@@ -510,12 +510,12 @@ body.theme-dark .song .chords {
   border: 1px solid var(--border);
   background: var(--button-bg);
   color: var(--button-fg);
-  padding: 10px 14px;
+  padding: 8px 10px;
   border-radius: 8px;
   font-size: 14px;
   margin-left: 8px;
   cursor: pointer;
-  min-width: 96px;
+  min-width: 84px;
   max-width: 220px;
   white-space: normal; /* allow wrapping */
   text-align: center;
@@ -532,9 +532,26 @@ body.theme-dark .song .chords {
   display: inline-block;
   margin-right: 6px;
   line-height: 1;
+  font-size: 15px;
 }
 .tab-toggle-btn .label {
   display: inline-block;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Smaller compact style for the small font-control buttons */
+.tab-toggle-btn.song-font-chords-decrease,
+.tab-toggle-btn.song-font-chords-increase,
+.tab-toggle-btn.song-font-lyrics-decrease,
+.tab-toggle-btn.song-font-lyrics-increase {
+  padding: 6px 8px;
+  min-width: 56px;
+  font-size: 13px;
+}
+
+.tab-toggle-btn.song-size-toggle .label {
+  font-size: 12px;
 }
 
   .transpose-controls .import-btn {
