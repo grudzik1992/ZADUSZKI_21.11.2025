@@ -510,6 +510,12 @@ body.theme-dark .song .chords {
   white-space: normal; /* allow wrapping */
   text-align: center;
   word-break: break-word;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  line-height: 1.1;
  }
 
   .transpose-controls .import-btn {
@@ -524,6 +530,11 @@ body.theme-dark .song .chords {
   white-space: normal;
   text-align: center;
   word-break: break-word;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
 }
 
 .transpose-controls .bpm-input {
