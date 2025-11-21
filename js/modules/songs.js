@@ -144,6 +144,53 @@ function createTransposeControls() {
   playBtn.title = 'Play / Pause auto-scroll';
   playBtn.textContent = '▶';
   controls.appendChild(playBtn);
+  // Import .txt input (hidden) and button
+  const importInput = document.createElement('input');
+  importInput.type = 'file';
+  importInput.accept = '.txt';
+  importInput.style.display = 'none';
+  controls.appendChild(importInput);
+
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.className = 'tab-toggle-btn import-btn';
+  importBtn.textContent = 'Import .txt';
+  importBtn.title = 'Wczytaj tabulaturę z pliku .txt';
+  controls.appendChild(importBtn);
+
+  importBtn.addEventListener('click', () => importInput.click());
+
+  importInput.addEventListener('change', () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result.replace(/\r\n?/g, '\n') : '';
+      // insert or update tablature field in the songDiv context (the handler that creates controls
+      // will assign this input/button to the controls for a particular song, so find the songDiv
+      const controlsNode = importInput.closest('.transpose-controls');
+      const songDiv = controlsNode?.closest('.song');
+      if (!songDiv) return;
+      const songContent = songDiv.querySelector('.song-content');
+      const fieldsWrap = songContent?.querySelector('.song-fields') || songContent;
+      if (!fieldsWrap) return;
+      // find existing tablature editable element
+      let tabEl = fieldsWrap.querySelector('.song-field.tablature-field .tablature');
+      if (!tabEl) {
+        // create a new tablature field and append
+        const tabWrap = createEditableField('tab', text, { normalize: false });
+        tabWrap.classList.add('tablature-field');
+        fieldsWrap.appendChild(tabWrap);
+      } else {
+        tabEl.textContent = text;
+      }
+      // keep dataset in sync so serialization picks it up immediately
+      songDiv.dataset.tab = text.trim();
+      // clear input for next use
+      importInput.value = '';
+    };
+    reader.readAsText(file, 'utf-8');
+  });
   return controls;
 }
 

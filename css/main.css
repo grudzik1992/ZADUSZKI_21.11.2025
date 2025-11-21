@@ -475,6 +475,11 @@ body.theme-dark .song .chords {
   cursor: pointer;
 }
 
+.transpose-controls .import-btn {
+  padding: 6px 8px;
+  background: linear-gradient(180deg, var(--button-bg), #f8fafc);
+}
+
 .transpose-controls .bpm-input {
   width: 64px;
   padding: 6px 8px;
