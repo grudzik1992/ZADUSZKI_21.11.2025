@@ -30,7 +30,10 @@ function normalizeLines(text) {
 export function parseTab(text) {
   const lines = normalizeLines(text);
   const rhythmIdx = findRhythmLine(lines);
-  if (rhythmIdx === -1) return { events: [], error: 'Rhythm line not found' };
+  if (rhythmIdx === -1) {
+    // fallback: simple column-based ASCII-tab parser (no rhythm line)
+    return parseTabColumns(lines);
+  }
 
   const rhythmLine = lines[rhythmIdx];
   // find token positions
@@ -117,4 +120,69 @@ export function parseTab(text) {
   }
 
   return { events, tokens: tokenMatches.map(t=>t.token), meta: { beats: cumulativeBeats } };
+}
+
+// Fallback parser: interpret a plain ASCII tab by columns. Assumes 6 string lines
+// (top = high E) and maps columns to subdivisions of a 4/4 bar. This is a simple
+// approach: each column is one subdivision (columnsPerBar), default 16.
+function parseTabColumns(lines) {
+  // collect candidate tab lines (lines containing '|' and '-' or digits)
+  const candidates = lines.filter(l => l.includes('|') && /[-\d]/.test(l));
+  if (candidates.length < 6) return { events: [], error: 'Not enough tab lines for column parser' };
+
+  // try to find 6 consecutive lines that look like the 6 strings
+  let finalTab = null;
+  for (let i = 0; i <= candidates.length - 6; i++) {
+    const block = candidates.slice(i, i + 6);
+    // require that most lines start with a letter (string name) or with whitespace then letter
+    const ok = block.every(ln => /^\s*[A-Za-z]?\s*\|/.test(ln) || /[-\d].*\|/.test(ln));
+    if (ok) { finalTab = block; break; }
+  }
+  if (!finalTab) finalTab = candidates.slice(0, 6);
+
+  // normalize: strip leading up to first '|' to align columns
+  finalTab = finalTab.map(ln => {
+    const pos = ln.indexOf('|');
+    return pos >= 0 ? ln.slice(pos + 1) : ln;
+  });
+
+  const maxLen = Math.max(...finalTab.map(l => l.length));
+  // pad lines
+  for (let i = 0; i < finalTab.length; i++) finalTab[i] = finalTab[i].padEnd(maxLen, ' ');
+
+  // determine columnsPerBar by finding first two '|' positions in the original first candidate
+  let columnsPerBar = 16;
+  const firstLineRaw = candidates.find(l => l.indexOf('|') >= 0) || '';
+  const pipeIdx = [];
+  for (let i = 0; i < firstLineRaw.length; i++) if (firstLineRaw[i] === '|') pipeIdx.push(i);
+  if (pipeIdx.length >= 2) {
+    const gap = pipeIdx[1] - pipeIdx[0] - 1;
+    if (gap >= 4) columnsPerBar = gap;
+  }
+
+  const beatsPerBar = 4;
+  const events = [];
+  let maxCol = maxLen;
+  for (let c = 0; c < maxCol; c++) {
+    const notes = [];
+    for (let s = 0; s < 6; s++) {
+      const line = finalTab[s];
+      // try to read up to 3 digits starting at c
+      const sub = line.slice(c, c + 3);
+      const m = sub.match(/^\d{1,3}/);
+      if (m) {
+        const fret = parseInt(m[0], 10);
+        const midi = STRING_BASES[s] + fret;
+        notes.push(midi);
+      }
+    }
+    if (notes.length) {
+      const timeBeats = (c / columnsPerBar) * beatsPerBar;
+      const durationBeats = (1 / columnsPerBar) * beatsPerBar; // one subdivision
+      events.push({ timeBeats, durationBeats, notes });
+    }
+  }
+
+  const totalBeats = Math.ceil((maxCol / columnsPerBar) * beatsPerBar);
+  return { events, tokens: [], meta: { beats: totalBeats } };
 }
