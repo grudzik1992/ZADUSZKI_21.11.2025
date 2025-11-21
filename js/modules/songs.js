@@ -233,10 +233,10 @@ function createTransposeControls() {
       const chordsEl = songDiv.querySelector('.chords');
       const lyricsEl = songDiv.querySelector('.lyrics');
       if (chordsEl) {
-        songDiv.dataset.chordsWidth = chordsEl.style.width || getComputedStyle(chordsEl).width || '';
+        songDiv.dataset.chordsHeight = chordsEl.style.height || getComputedStyle(chordsEl).height || '';
       }
       if (lyricsEl) {
-        songDiv.dataset.lyricsWidth = lyricsEl.style.width || getComputedStyle(lyricsEl).width || '';
+        songDiv.dataset.lyricsHeight = lyricsEl.style.height || getComputedStyle(lyricsEl).height || '';
       }
     }
   });
@@ -304,12 +304,12 @@ function createSongElement(songData, options, songsHost) {
     songDiv.dataset.fontLyrics = songData.fontLyrics;
     songDiv.style.setProperty('--song-lyrics-font-size', songData.fontLyrics);
   }
-  // apply persisted widths if present
-  if (songData.chordsWidth) {
-    songDiv.dataset.chordsWidth = songData.chordsWidth;
+  // apply persisted heights if present
+  if (songData.chordsHeight) {
+    songDiv.dataset.chordsHeight = songData.chordsHeight;
   }
-  if (songData.lyricsWidth) {
-    songDiv.dataset.lyricsWidth = songData.lyricsWidth;
+  if (songData.lyricsHeight) {
+    songDiv.dataset.lyricsHeight = songData.lyricsHeight;
   }
   if (!showChords) {
     songDiv.classList.add('song--lyrics-only');
@@ -397,8 +397,8 @@ function createSongElement(songData, options, songsHost) {
   try {
     const chordsEl = songDiv.querySelector('.chords');
     const lyricsEl = songDiv.querySelector('.lyrics');
-    if (songDiv.dataset.chordsWidth && chordsEl) chordsEl.style.width = songDiv.dataset.chordsWidth;
-    if (songDiv.dataset.lyricsWidth && lyricsEl) lyricsEl.style.width = songDiv.dataset.lyricsWidth;
+    if (songDiv.dataset.chordsHeight && chordsEl) chordsEl.style.height = songDiv.dataset.chordsHeight;
+    if (songDiv.dataset.lyricsHeight && lyricsEl) lyricsEl.style.height = songDiv.dataset.lyricsHeight;
   } catch (err) {
     // ignore
   }
@@ -643,12 +643,12 @@ export function serializeSongs(songsHost) {
     if (bpmEl) {
       song.dataset.bpm = String(bpmVal);
     }
-    // persist any manual widths
-    const chordsWidth = song.dataset.chordsWidth || '';
-    const lyricsWidth = song.dataset.lyricsWidth || '';
+    // persist any manual heights
+    const chordsHeight = song.dataset.chordsHeight || '';
+    const lyricsHeight = song.dataset.lyricsHeight || '';
     const item = { title, id, chords, lyrics, notes, tab, bpm: bpmVal };
-    if (chordsWidth) item.chordsWidth = chordsWidth;
-    if (lyricsWidth) item.lyricsWidth = lyricsWidth;
+    if (chordsHeight) item.chordsHeight = chordsHeight;
+    if (lyricsHeight) item.lyricsHeight = lyricsHeight;
     songs.push(item);
   });
   return songs;
