@@ -212,13 +212,14 @@ function createTransposeControls() {
   importBtn.title = 'Wczytaj tabulaturę z pliku .txt';
   controls.appendChild(importBtn);
 
-  // Add per-song size edit toggle (pencil). When active, user can resize
+  // Add per-song size edit toggle. When active, user can resize
   // chords and lyrics containers vertically. Persist heights to dataset.
   const sizeToggle = document.createElement('button');
   sizeToggle.type = 'button';
   sizeToggle.className = 'tab-toggle-btn song-size-toggle';
   sizeToggle.title = 'Włącz edycję rozmiaru kontenerów (przeciągnij by zmienić)';
-  sizeToggle.innerHTML = '<span class="icon">✏️</span><span class="label">Rozmiar</span>';
+  // keep label only (no pencil icon) so the button remains compact and predictable
+  sizeToggle.textContent = 'Rozmiar';
   controls.appendChild(sizeToggle);
 
   sizeToggle.addEventListener('click', () => {
