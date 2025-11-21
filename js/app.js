@@ -384,18 +384,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const synth = new Tone.PolySynth(Tone.Synth).toDestination();
         _currentSynth = synth;
         // schedule events
+        // clear transport and reset position before scheduling
+        try { Tone.Transport.cancel(); } catch (e) { /* ignore */ }
+        try { Tone.Transport.seconds = 0; } catch (e) { /* ignore */ }
+
+        // schedule events on the Transport using midi->note conversion
         parsed.events.forEach(evt => {
-          const timeSec = (evt.timeBeats * 60) / tempo;
+          const timeSec = (evt.timeBeats * 60) / tempo; // seconds from start
           const durSec = (evt.durationBeats * 60) / tempo;
           const when = `${timeSec}s`;
           const dur = `${durSec}s`;
           Tone.Transport.schedule((time) => {
-            // convert midi numbers to frequency string
-            const freqs = evt.notes.map(n => Tone.Frequency(n, 'midi'));
-            synth.triggerAttackRelease(freqs, dur, time);
+            // convert midi numbers to note names (e.g., 'A4') for clarity
+            const notes = evt.notes.map(n => {
+              try { return Tone.Frequency(Number(n), 'midi').toNote(); } catch (err) { return n; }
+            });
+            synth.triggerAttackRelease(notes, dur, time);
           }, when);
         });
-        Tone.Transport.start('+0.1');
+        // start transport slightly in the future to allow scheduling to settle
+        Tone.Transport.start('+0.05');
       } else {
         console.warn('Tone.js not available');
       }
