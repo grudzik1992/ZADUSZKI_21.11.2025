@@ -406,6 +406,10 @@ body.theme-dark .delete-song-btn:hover {
   font-weight: 600;
 }
 
+.song .tablature {
+  font-size: var(--song-tab-font-size, var(--base-font-size));
+}
+
 .song-field {
   display: flex;
   flex-direction: column;

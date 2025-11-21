@@ -92,12 +92,7 @@ function createSongContent(songData, options) {
   const fieldsWrap = document.createElement('div');
   fieldsWrap.className = 'song-fields';
 
-  if (showChords) {
-    const normalizedChords = trimTrailingEmptyLines(normalizeMultiline(chords).split('\n'));
-    fieldsWrap.appendChild(createEditableField('chords', normalizedChords, { normalize: normalizeChords }));
-  }
-
-  // If a tablature block exists for this song, render it and make it span full width
+  // Render tablature first (so it always appears at the top of the fields area)
   if (songData && typeof songData.tab === 'string' && songData.tab.trim()) {
     const tabText = songData.tab || '';
     const tabField = createEditableField('tab', tabText, { normalize: false });
@@ -105,6 +100,13 @@ function createSongContent(songData, options) {
     fieldsWrap.appendChild(tabField);
   }
 
+  // Chords column (optional)
+  if (showChords) {
+    const normalizedChords = trimTrailingEmptyLines(normalizeMultiline(chords).split('\n'));
+    fieldsWrap.appendChild(createEditableField('chords', normalizedChords, { normalize: normalizeChords }));
+  }
+
+  // Lyrics go after tablature and chords
   const normalizedLyrics = trimTrailingEmptyLines(normalizeMultiline(lyrics).split('\n'));
   fieldsWrap.appendChild(createEditableField('lyrics', normalizedLyrics));
 
@@ -531,6 +533,10 @@ function createSongElement(songData, options, songsHost) {
     songDiv.style.setProperty('--song-chords-font-size', songData.font);
     songDiv.style.setProperty('--song-lyrics-font-size', songData.font);
   }
+  if (songData.fontTab) {
+    songDiv.dataset.fontTab = songData.fontTab;
+    songDiv.style.setProperty('--song-tab-font-size', songData.fontTab);
+  }
   if (songData.fontChords) {
     songDiv.dataset.fontChords = songData.fontChords;
     songDiv.style.setProperty('--song-chords-font-size', songData.fontChords);
@@ -598,6 +604,33 @@ function createSongElement(songData, options, songsHost) {
         songDiv.style.setProperty('--song-lyrics-font-size', val);
       };
 
+      const applyTabFont = (delta) => {
+        const base = getComputedStyle(document.documentElement).getPropertyValue('--base-font-size') || '18px';
+        const cur = getCurrent('--song-tab-font-size', parseFloat(base));
+        const next = clamp(Math.round((cur + delta) * 10) / 10);
+        const val = `${next}px`;
+        songDiv.dataset.fontTab = val;
+        songDiv.style.setProperty('--song-tab-font-size', val);
+      };
+
+      // Add tab font controls
+      const tabDec = document.createElement('button');
+      tabDec.type = 'button';
+      tabDec.className = 'tab-toggle-btn song-font-tab-decrease';
+      tabDec.title = 'Zmniejsz czcionkę tabulatury';
+      tabDec.innerHTML = '<span class="icon">🎶</span><span class="label">T-</span>';
+      controls.appendChild(tabDec);
+
+      const tabInc = document.createElement('button');
+      tabInc.type = 'button';
+      tabInc.className = 'tab-toggle-btn song-font-tab-increase';
+      tabInc.title = 'Zwiększ czcionkę tabulatury';
+      tabInc.innerHTML = '<span class="icon">🎶</span><span class="label">T+</span>';
+      controls.appendChild(tabInc);
+
+      controls.querySelector('.song-font-tab-decrease')?.addEventListener('click', () => applyTabFont(-1));
+      controls.querySelector('.song-font-tab-increase')?.addEventListener('click', () => applyTabFont(1));
+
       controls.querySelector('.song-font-chords-decrease')?.addEventListener('click', () => applyChordsFont(-1));
       controls.querySelector('.song-font-chords-increase')?.addEventListener('click', () => applyChordsFont(1));
       controls.querySelector('.song-font-lyrics-decrease')?.addEventListener('click', () => applyLyricsFont(-1));
@@ -624,6 +657,13 @@ function createSongElement(songData, options, songsHost) {
           } else {
             songDiv.style.removeProperty('--song-lyrics-font-size');
             delete songDiv.dataset.fontLyrics;
+          }
+          if (orig.fontTab) {
+            songDiv.dataset.fontTab = orig.fontTab;
+            songDiv.style.setProperty('--song-tab-font-size', orig.fontTab);
+          } else {
+            songDiv.style.removeProperty('--song-tab-font-size');
+            delete songDiv.dataset.fontTab;
           }
 
           // Widths
@@ -765,6 +805,7 @@ function createSongElement(songData, options, songsHost) {
       const orig = {
         fontChords: songDiv.dataset.fontChords || cs(songDiv, '--song-chords-font-size') || '',
         fontLyrics: songDiv.dataset.fontLyrics || cs(songDiv, '--song-lyrics-font-size') || '',
+        fontTab: songDiv.dataset.fontTab || cs(songDiv, '--song-tab-font-size') || '',
         chordsWidth: chordsInit ? (chordsInit.style.width || '') : '',
         lyricsWidth: lyricsInit ? (lyricsInit.style.width || '') : '',
         chordsHeight: chordsInit ? (chordsInit.style.height || '') : '',
@@ -1059,8 +1100,10 @@ export function serializeSongsWithFont(songsHost) {
   $$('.song', songsHost).forEach((songEl, idx) => {
     const fontChords = songEl.dataset.fontChords || '';
     const fontLyrics = songEl.dataset.fontLyrics || '';
+    const fontTab = songEl.dataset.fontTab || '';
     if (fontChords) songs[idx].fontChords = fontChords;
     if (fontLyrics) songs[idx].fontLyrics = fontLyrics;
+    if (fontTab) songs[idx].fontTab = fontTab;
   });
   return songs;
 }
