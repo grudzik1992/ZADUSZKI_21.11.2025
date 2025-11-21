@@ -62,6 +62,7 @@ function queryAllSelectors() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('[app] DOMContentLoaded');
   const refs = queryAllSelectors();
   const context = { tocList: refs.tocList, songsHost: refs.songsHost };
   const scrollWithOffset = (targetId) => scrollToSong(targetId, refs.toolbar);
@@ -128,23 +129,28 @@ document.addEventListener('DOMContentLoaded', () => {
   hydrateSongs();
 
   function hydrateSongs() {
+    console.log('[app] hydrateSongs start');
     if (!refs.songsHost) return;
     showMessage(MESSAGE_LOADING);
 
     const savedSongs = prepareSavedSongs();
+    console.log('[app] savedSongs.length =', savedSongs.length);
     if (savedSongs.length) {
       renderSongs(context, savedSongs, {
         ...songFeatureOptions({
           normalizeChords: isVocalistProfile() ? false : getNotationPreference() !== 'pl',
         }),
       });
+      console.log('[app] renderSongs from savedSongs done');
       finalizeRender();
       return;
     }
 
     loadDefaultSongs({ includeChords: !isVocalistProfile() }).then((defaults) => {
+      console.log('[app] loadDefaultSongs resolved, defaults.length =', defaults.length);
       if (defaults.length) {
         renderSongs(context, defaults, songFeatureOptions());
+        console.log('[app] renderSongs from defaults done');
         finalizeRender();
       } else {
         showMessage(MESSAGE_LOAD_ERROR);
@@ -167,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyOrder(refs.tocList, refs.songsHost, order);
     }
     refreshOrderingState();
+    console.log('[app] finalizeRender complete');
   }
 
   function showMessage(message) {
