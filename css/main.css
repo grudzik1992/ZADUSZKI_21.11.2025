@@ -433,14 +433,22 @@ body.theme-dark .delete-song-btn:hover {
   cursor: text;
 }
 
-/* When size-edit-mode is enabled allow vertical resizing of fields */
+/* When size-edit-mode is enabled allow horizontal resizing of fields */
 .song.size-edit-mode .chords,
 .song.size-edit-mode .lyrics {
-  resize: vertical;
+  resize: horizontal;
   overflow: auto;
-  min-height: 60px;
+  min-width: 160px;
+  max-width: 100%;
   border-style: solid;
   border-color: var(--accent);
+}
+
+/* Ensure the resizable fields remain block-level and can be resized horizontally */
+.song .chords,
+.song .lyrics {
+  display: block;
+  box-sizing: border-box;
 }
 
 /* Per-field font-size overrides */
