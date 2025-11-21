@@ -326,6 +326,21 @@ function createTransposeControls() {
 
   tabControls.appendChild(tabImportBtn);
   tabControls.appendChild(tabSaveBtn);
+  // Button to download original imported Guitar Pro file (if present)
+  const tabDownloadBtn = document.createElement('button');
+  tabDownloadBtn.type = 'button';
+  tabDownloadBtn.className = 'tab-toggle-btn tab-download-global';
+  tabDownloadBtn.textContent = 'Pobierz oryginał';
+  tabDownloadBtn.title = 'Pobierz zaimportowany plik Guitar Pro (.gp*)';
+  tabControls.appendChild(tabDownloadBtn);
+
+  // Button to populate the editable tab field with a simple info note
+  const tabInsertInfoBtn = document.createElement('button');
+  tabInsertInfoBtn.type = 'button';
+  tabInsertInfoBtn.className = 'tab-toggle-btn tab-insert-info';
+  tabInsertInfoBtn.textContent = 'Wstaw info';
+  tabInsertInfoBtn.title = 'Wstaw informację o zaimportowanym pliku do pola Tab (edytowalne)';
+  tabControls.appendChild(tabInsertInfoBtn);
   tabControls.appendChild(tabImportInput);
   // ensure tabControls is part of the controls DOM so it can be repositioned
   controls.appendChild(tabControls);
@@ -403,6 +418,56 @@ function createTransposeControls() {
       };
       reader.readAsText(file, 'utf-8');
     }
+  });
+
+  // Download original GP file if present
+  tabDownloadBtn.addEventListener('click', () => {
+    const controlsNode = tabDownloadBtn.closest('.transpose-controls');
+    const songContainer = controlsNode?.closest('.song');
+    if (!songContainer) return;
+    const b64 = songContainer.dataset.tabFile || '';
+    const name = songContainer.dataset.tabFileName || 'import.gp5';
+    if (!b64) { window.alert('Brak zaimportowanego pliku Guitar Pro dla tego utworu.'); return; }
+    try {
+      // decode base64 to binary and create blob
+      const binary = atob(b64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download GP error', err);
+      window.alert('Nie udało się pobrać pliku. Sprawdź konsolę.');
+    }
+  });
+
+  // Insert a simple info note into the editable tab field so user sees something
+  tabInsertInfoBtn.addEventListener('click', () => {
+    const controlsNode = tabInsertInfoBtn.closest('.transpose-controls');
+    const songContainer = controlsNode?.closest('.song');
+    if (!songContainer) return;
+    const fieldsWrap = songContainer.querySelector('.song-fields');
+    if (!fieldsWrap) return;
+    let tabWrap = fieldsWrap.querySelector('.song-field.tablature-field');
+    const fileName = songContainer.dataset.tabFileName || '';
+    const infoText = fileName ? `Zaimportowano plik Guitar Pro: ${fileName}\n(Plik binarny nie został przekonwertowany na ASCII tab)` : 'Zaimportowano plik Guitar Pro (brak nazwy pliku).';
+    if (!tabWrap) {
+      tabWrap = createEditableField('tab', infoText, { normalize: false });
+      tabWrap.classList.add('tablature-field');
+      fieldsWrap.prepend(tabWrap);
+    } else {
+      const inner = tabWrap.querySelector('.tablature') || tabWrap.querySelector('[data-field="tab"]');
+      if (inner) inner.textContent = infoText;
+    }
+    songContainer.dataset.tab = songContainer.dataset.tab || '';
   });
 
   tabSaveBtn.addEventListener('click', () => {
