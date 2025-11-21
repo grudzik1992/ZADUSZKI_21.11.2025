@@ -166,6 +166,23 @@ function createTransposeControls() {
     const heading = playBtn.closest('.song')?.querySelector('h2');
     const id = heading?.id || playBtn.closest('.song')?.dataset.id || '';
     const detail = { id, bpm };
+    // Ensure AudioContext is resumed from a user gesture to satisfy autoplay policies
+    try {
+      if (window.Tone && typeof window.Tone.start === 'function') {
+        // call Tone.start() inside the click handler (user gesture)
+        window.Tone.start().catch((err) => console.warn('Tone.start() rejected:', err));
+      } else if (window.AudioContext || window.webkitAudioContext) {
+        // Attempt to resume any existing AudioContext if present
+        try {
+          const ctx = window.audioContext || (window.AudioContext && new window.AudioContext());
+          if (ctx && typeof ctx.resume === 'function') ctx.resume().catch(() => {});
+        } catch (e) { /* ignore */ }
+      }
+
+    } catch (err) {
+      console.warn('Error while trying to resume audio context:', err);
+    }
+
     if (!isPlaying) {
       playBtn.setAttribute('aria-pressed', 'true');
       playBtn.textContent = '⏸';
