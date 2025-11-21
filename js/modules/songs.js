@@ -342,6 +342,14 @@ function createTransposeControls() {
   tabInsertInfoBtn.title = 'Wstaw informację o zaimportowanym pliku do pola Tab (edytowalne)';
   tabControls.appendChild(tabInsertInfoBtn);
   tabControls.appendChild(tabImportInput);
+
+  // Add button to render/play imported GP via AlphaTab (lazy-load)
+  const tabPlayGpBtn = document.createElement('button');
+  tabPlayGpBtn.type = 'button';
+  tabPlayGpBtn.className = 'tab-toggle-btn tab-play-gp';
+  tabPlayGpBtn.textContent = 'Odtwórz GP';
+  tabPlayGpBtn.title = 'Renderuj i odtwórz zaimportowany plik Guitar Pro (AlphaTab)';
+  tabControls.appendChild(tabPlayGpBtn);
   // ensure tabControls is part of the controls DOM so it can be repositioned
   controls.appendChild(tabControls);
   // Wire import/save to operate on this song's tablature (closest .song)
@@ -468,6 +476,58 @@ function createTransposeControls() {
       if (inner) inner.textContent = infoText;
     }
     songContainer.dataset.tab = songContainer.dataset.tab || '';
+  });
+
+  // Handler for Play GP (AlphaTab) - lazy initialize player and render first track
+  tabPlayGpBtn.addEventListener('click', async () => {
+    const controlsNode = tabPlayGpBtn.closest('.transpose-controls');
+    const songContainer = controlsNode?.closest('.song');
+    if (!songContainer) return;
+    const b64 = songContainer.dataset.tabFile || '';
+    if (!b64) { window.alert('Brak zaimportowanego pliku Guitar Pro dla tego utworu.'); return; }
+
+    // decode base64 to ArrayBuffer
+    try {
+      const binary = atob(b64);
+      const len = binary.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+      const ab = bytes.buffer;
+
+      // create or find a container for AlphaTab inside song fields
+      const fieldsWrap = songContainer.querySelector('.song-fields');
+      if (!fieldsWrap) return;
+      let alphaWrap = songContainer.querySelector('.alphatab-container');
+      if (!alphaWrap) {
+        alphaWrap = document.createElement('div');
+        alphaWrap.className = 'alphatab-container';
+        alphaWrap.style.marginTop = '8px';
+        alphaWrap.style.minHeight = '80px';
+        fieldsWrap.prepend(alphaWrap);
+      }
+
+      // Lazy load and init AlphaTab
+      try {
+        // dynamic import of our helper module
+        const module = await import('./alphaTab.js');
+        // choose soundFont: prefer local asset if exists, otherwise empty (AlphaTab may fallback)
+        const SOUND_FONT_URL = '/assets/sf2/default.sf2';
+        // attempt to ensure soundfont exists (non-blocking)
+        const ok = await module.ensureSoundFont(SOUND_FONT_URL).catch(() => false);
+        const sf = ok ? SOUND_FONT_URL : '';
+        // Remove any previous AlphaTab children to re-init cleanly
+        alphaWrap.innerHTML = '';
+        const api = await module.initAlphaTab(alphaWrap, ab, { soundFont: sf });
+        // Save reference on container for future control (pause/stop)
+        alphaWrap._alphaApi = api;
+      } catch (err) {
+        console.error('AlphaTab render failed', err);
+        window.alert('Nie udało się zainicjować AlphaTab. Sprawdź konsolę.');
+      }
+    } catch (err) {
+      console.error('Decode GP base64 failed', err);
+      window.alert('Błąd przy odczycie pliku Guitar Pro.');
+    }
   });
 
   tabSaveBtn.addEventListener('click', () => {
