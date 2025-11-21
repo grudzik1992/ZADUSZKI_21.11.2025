@@ -452,6 +452,21 @@ body.theme-dark .delete-song-btn:hover {
   grid-template-columns: auto 1fr;
 }
 
+/* Vertical resize mode (heights) */
+.song.size-edit-height .chords,
+.song.size-edit-height .lyrics {
+  resize: vertical;
+  overflow: auto;
+  min-height: 60px;
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+/* When editing heights keep usual two-column grid */
+.song.size-edit-height .song-fields {
+  grid-template-columns: minmax(220px, 1fr) minmax(320px, 2fr);
+}
+
 /* Per-field font-size overrides */
 .song .chords {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

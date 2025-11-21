@@ -243,6 +243,34 @@ function createTransposeControls() {
     }
   });
 
+  // Add per-song height edit toggle. Allows vertical resizing of chords/lyrics.
+  const heightToggle = document.createElement('button');
+  heightToggle.type = 'button';
+  heightToggle.className = 'tab-toggle-btn song-height-toggle';
+  heightToggle.title = 'Włącz edycję wysokości kontenerów (przeciągnij by zmienić)';
+  heightToggle.textContent = 'Wysokość';
+  controls.appendChild(heightToggle);
+
+  heightToggle.addEventListener('click', () => {
+    const controlsNode = heightToggle.closest('.transpose-controls');
+    const songDiv = controlsNode?.closest('.song');
+    if (!songDiv) return;
+    const enabled = songDiv.classList.toggle('size-edit-height');
+    heightToggle.setAttribute('aria-pressed', String(enabled));
+    heightToggle.title = enabled ? 'Wyłącz edycję wysokości' : 'Włącz edycję wysokości';
+    // when disabling, persist heights
+    if (!enabled) {
+      const chordsEl = songDiv.querySelector('.chords');
+      const lyricsEl = songDiv.querySelector('.lyrics');
+      if (chordsEl) {
+        songDiv.dataset.chordsHeight = chordsEl.style.height || getComputedStyle(chordsEl).height || '';
+      }
+      if (lyricsEl) {
+        songDiv.dataset.lyricsHeight = lyricsEl.style.height || getComputedStyle(lyricsEl).height || '';
+      }
+    }
+  });
+
   importBtn.addEventListener('click', () => importInput.click());
 
   importInput.addEventListener('change', () => {
@@ -427,6 +455,9 @@ function createSongElement(songData, options, songsHost) {
     // apply persisted widths if present
     if (songDiv.dataset.chordsWidth && chordsEl) chordsEl.style.width = songDiv.dataset.chordsWidth;
     if (songDiv.dataset.lyricsWidth && lyricsEl) lyricsEl.style.width = songDiv.dataset.lyricsWidth;
+    // apply persisted heights if present
+    if (songDiv.dataset.chordsHeight && chordsEl) chordsEl.style.height = songDiv.dataset.chordsHeight;
+    if (songDiv.dataset.lyricsHeight && lyricsEl) lyricsEl.style.height = songDiv.dataset.lyricsHeight;
   } catch (err) {
     // ignore
   }
@@ -671,12 +702,16 @@ export function serializeSongs(songsHost) {
     if (bpmEl) {
       song.dataset.bpm = String(bpmVal);
     }
-    // persist any manual widths
+    // persist any manual widths and heights
     const chordsWidth = song.dataset.chordsWidth || '';
     const lyricsWidth = song.dataset.lyricsWidth || '';
+    const chordsHeight = song.dataset.chordsHeight || '';
+    const lyricsHeight = song.dataset.lyricsHeight || '';
     const item = { title, id, chords, lyrics, notes, tab, bpm: bpmVal };
     if (chordsWidth) item.chordsWidth = chordsWidth;
     if (lyricsWidth) item.lyricsWidth = lyricsWidth;
+    if (chordsHeight) item.chordsHeight = chordsHeight;
+    if (lyricsHeight) item.lyricsHeight = lyricsHeight;
     songs.push(item);
   });
   return songs;
