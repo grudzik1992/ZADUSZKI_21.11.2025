@@ -330,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   let _currentSynth = null;
-  function startAudioPlayback({ id, bpm }) {
+  async function startAudioPlayback({ id, bpm }) {
     try {
       const songEl = document.getElementById(id)?.closest('.song');
       if (!songEl) return;
@@ -345,6 +345,16 @@ document.addEventListener('DOMContentLoaded', () => {
       // prepare synth
       if (window.Tone && typeof window.Tone !== 'undefined') {
         const Tone = window.Tone;
+        try {
+          if (typeof Tone.start === 'function') {
+            // ensure audio context is resumed from a user gesture
+            await Tone.start();
+          }
+        } catch (err) {
+          // non-fatal: continue and try to schedule anyway
+          console.warn('Tone.start() failed or was blocked:', err);
+        }
+
         Tone.Transport.stop();
         Tone.Transport.cancel();
         Tone.Transport.bpm.value = tempo;
