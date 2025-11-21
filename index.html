@@ -31,7 +31,7 @@
       </div>
       <button id="addSongBtn" type="button">Dodaj utwór</button>
       <button id="saveSongbookBtn" type="button">Zapisz zmiany</button>
-      <button id="importJsonBtn" type="button">Wczytaj JSON</button>
+      <label id="importJsonBtn" for="importJsonInput" role="button" tabindex="0">Wczytaj JSON</label>
       <button id="clearSongbookBtn" type="button">Wyczyść dane</button>
   <button id="clearCacheBtn" type="button">Wyczyść cache</button>
   <button id="lockTocBtn" type="button" aria-pressed="false" class="icon-btn">
@@ -167,8 +167,8 @@
   </noscript>
 
   <input id="importJsonInput" type="file" accept="application/json" hidden />
-
   <script src="js/serviceWorkerGuard.js" defer></script>
+  <script src="js/import-fallback.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.min.js" defer></script>
   <script type="module" src="js/app.js"></script>
 </body>
