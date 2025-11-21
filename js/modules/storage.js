@@ -111,8 +111,29 @@ export async function loadDefaultSongs({ includeChords = true } = {}) {
     // which will be used as the app defaults without overwriting other data
     // files.
     try {
-      // Prefer a user-provided `data/dane.json` if present in the repo.
-      // This allows you to drop your own `dane.json` file into `data/`.
+      // Prefer a user-provided `dane.json` file in the repository root first,
+      // then `data/dane.json` (for users who put it under `data/`). This
+      // ensures the file you placed at project root is used as the primary
+      // source for chords/lyrics/etc.
+      try {
+        const rootDane = await fetchJson('dane.json');
+        if (rootDane && Array.isArray(rootDane.songs) && rootDane.songs.length) {
+          const mapped = rootDane.songs.map((song, idx) => ({
+            id: song.id || `song-${idx + 1}`,
+            title: song.title || `Utwór ${idx + 1}`,
+            lyrics: typeof song.lyrics === 'string' ? song.lyrics : '',
+            chords: includeChords ? (typeof song.chords === 'string' ? song.chords : '') : '',
+            number: typeof song.number === 'number' ? song.number : idx + 1,
+            notes: typeof song.notes === 'string' ? song.notes : '',
+            tab: typeof song.tab === 'string' ? song.tab : '',
+          }));
+          mapped.sort((a, b) => (a.number || 0) - (b.number || 0));
+          return mapped;
+        }
+      } catch (err) {
+        // ignore and try data/dane.json
+      }
+
       try {
         const dane = await fetchJson('data/dane.json');
         if (dane && Array.isArray(dane.songs) && dane.songs.length) {
@@ -131,7 +152,6 @@ export async function loadDefaultSongs({ includeChords = true } = {}) {
       } catch (err) {
         // ignore and try other custom files
       }
-
       const custom = await fetchJson('data/spiewnik-instrumentalist-2025-11-03-17-36-01.json');
       if (custom && Array.isArray(custom.songs) && custom.songs.length) {
         // Map the exported format to the shape expected by the app

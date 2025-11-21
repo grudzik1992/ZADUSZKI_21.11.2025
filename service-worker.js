@@ -1,5 +1,6 @@
 // Keep cache name in sync with CURRENT_DEFAULTS_VERSION in storage.js
-const CACHE_NAME = "spiewnik-cache-2025-11-03-v1";
+// Bump this value to force clients to download fresh assets and clear old caches.
+const CACHE_NAME = "spiewnik-cache-2025-11-21-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -16,6 +17,7 @@ const ASSETS = [
   "./js/modules/transpose.js",
   "./data/chords.json",
   "./data/lyrics.json",
+  "./data/dane.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./img/komputer.png",
@@ -63,10 +65,12 @@ self.addEventListener("fetch", event => {
 // Aktualizacja cache
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    // Delete all caches to ensure no stale assets remain, then recreate the
+    // active cache. This forces clients to receive the newest files during
+    // development and after we update `dane.json` or other defaults.
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
   );
+  // Take control of uncontrolled clients immediately
   self.clients.claim();
-  console.log("♻️ Service Worker: Zaktualizowano cache.");
+  console.log("♻️ Service Worker: Wszystkie cache usunięte i worker aktywowany.");
 });
