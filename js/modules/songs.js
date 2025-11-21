@@ -159,39 +159,61 @@ function createTransposeControls() {
   playBtn.title = 'Play / Pause auto-scroll';
   playBtn.textContent = '▶';
   controls.appendChild(playBtn);
-  // Wire up play/pause for auto-scroll and audio. Toggle aria and dispatch events.
+  // Wire up play/pause for auto-scroll only. Toggle aria and dispatch autoscroll events.
   playBtn.addEventListener('click', () => {
     const isPlaying = playBtn.getAttribute('aria-pressed') === 'true';
     const bpm = Number(bpmInput?.value) || 0;
     const heading = playBtn.closest('.song')?.querySelector('h2');
     const id = heading?.id || playBtn.closest('.song')?.dataset.id || '';
     const detail = { id, bpm };
-    // Ensure AudioContext is resumed from a user gesture to satisfy autoplay policies
-    try {
-      if (window.Tone && typeof window.Tone.start === 'function') {
-        // call Tone.start() inside the click handler (user gesture)
-        window.Tone.start().catch((err) => console.warn('Tone.start() rejected:', err));
-      } else if (window.AudioContext || window.webkitAudioContext) {
-        // Attempt to resume any existing AudioContext if present
-        try {
-          const ctx = window.audioContext || (window.AudioContext && new window.AudioContext());
-          if (ctx && typeof ctx.resume === 'function') ctx.resume().catch(() => {});
-        } catch (e) { /* ignore */ }
-      }
-
-    } catch (err) {
-      console.warn('Error while trying to resume audio context:', err);
-    }
-
     if (!isPlaying) {
       playBtn.setAttribute('aria-pressed', 'true');
       playBtn.textContent = '⏸';
-      // bubble event to app which will start autoscroll/audio
-      playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:play', { detail, bubbles: true }));
+      // bubble event to app which will start autoscroll only
+      playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:autoscroll', { detail, bubbles: true }));
     } else {
       playBtn.setAttribute('aria-pressed', 'false');
       playBtn.textContent = '▶';
-      playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:stop', { detail, bubbles: true }));
+      playBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:autoscroll-stop', { detail, bubbles: true }));
+    }
+  });
+
+  // Audio-only play button: will attempt to resume AudioContext on user gesture
+  const audioBtn = document.createElement('button');
+  audioBtn.type = 'button';
+  audioBtn.className = 'song-audio-btn';
+  audioBtn.setAttribute('aria-pressed', 'false');
+  audioBtn.title = 'Odtwórz tabulaturę (dźwięk)';
+  audioBtn.textContent = '♪';
+  controls.appendChild(audioBtn);
+  audioBtn.addEventListener('click', async () => {
+    const isPlaying = audioBtn.getAttribute('aria-pressed') === 'true';
+    const bpm = Number(bpmInput?.value) || 0;
+    const heading = audioBtn.closest('.song')?.querySelector('h2');
+    const id = heading?.id || audioBtn.closest('.song')?.dataset.id || '';
+    const detail = { id, bpm };
+    // ensure AudioContext is resumed from user gesture
+    try {
+      if (window.Tone && typeof window.Tone.start === 'function') {
+        await window.Tone.start();
+      } else if (window.AudioContext || window.webkitAudioContext) {
+        try {
+          const ctx = window.audioContext || (window.AudioContext && new window.AudioContext());
+          if (ctx && typeof ctx.resume === 'function') await ctx.resume();
+        } catch (e) { /* ignore */ }
+      }
+    } catch (err) {
+      console.warn('Audio resume failed:', err);
+    }
+
+    if (!isPlaying) {
+      audioBtn.setAttribute('aria-pressed', 'true');
+      audioBtn.textContent = '⏸';
+      audioBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:audio-play', { detail, bubbles: true }));
+    } else {
+      audioBtn.setAttribute('aria-pressed', 'false');
+      audioBtn.textContent = '♪';
+      audioBtn.closest('.song')?.dispatchEvent(new CustomEvent('song:audio-stop', { detail, bubbles: true }));
     }
   });
   // Per-field font size controls: chords (guitar) and lyrics (microphone)

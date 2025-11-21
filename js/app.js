@@ -338,17 +338,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // listen for song play/stop events bubbled from song elements
-  refs.songsHost?.addEventListener('song:play', (e) => {
+  // listen for autoscroll events (separate from audio playback)
+  refs.songsHost?.addEventListener('song:autoscroll', (e) => {
     const { id, bpm } = e.detail || {};
     startAutoScroll({ id, bpm });
-    // also start audio playback if tablature exists
+  });
+  refs.songsHost?.addEventListener('song:autoscroll-stop', (e) => {
+    stopAutoScroll();
+  });
+
+  // listen for audio-only play/stop events
+  refs.songsHost?.addEventListener('song:audio-play', (e) => {
+    const { id, bpm } = e.detail || {};
     startAudioPlayback({ id, bpm });
   });
-  refs.songsHost?.addEventListener('song:stop', (e) => {
-    const { id } = e.detail || {};
-    // stop autoscroll (will reset the specific button)
-    stopAutoScroll();
+  refs.songsHost?.addEventListener('song:audio-stop', (e) => {
     stopAudioPlayback();
   });
 
@@ -500,6 +504,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.warn('Error stopping audio:', err);
     }
+    // Reset any audio play buttons to not-playing state
+    try {
+      document.querySelectorAll('.song-audio-btn[aria-pressed="true"]').forEach((btn) => {
+        btn.setAttribute('aria-pressed', 'false');
+        btn.textContent = '♪';
+      });
+    } catch (e) { /* ignore */ }
   }
 
   function initToolbarActions() {
