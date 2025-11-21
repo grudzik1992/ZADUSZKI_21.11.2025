@@ -282,6 +282,12 @@ document.addEventListener('DOMContentLoaded', () => {
     stopAutoScroll();
     const songEl = document.getElementById(id)?.closest('.song');
     if (!songEl) return;
+    // ensure the related play button shows playing state
+    const playBtn = songEl.querySelector('.song-play-btn');
+    if (playBtn) {
+      playBtn.setAttribute('aria-pressed', 'true');
+      playBtn.textContent = '⏸';
+    }
     const pxPerBeat = Number(localStorage.getItem(PX_PER_BEAT_KEY)) || Number(refs.pxPerBeatInput?.value) || 30;
     const speed = (pxPerBeat * (Number(bpm) || 60)) / 60; // px per second
     autoScrollState.speedPxPerSec = speed;
@@ -311,11 +317,25 @@ document.addEventListener('DOMContentLoaded', () => {
       autoScrollState.lastTime = null;
       autoScrollState.targetSong = null;
     }
-    // ensure any play buttons are reset
-    document.querySelectorAll('.song-play-btn[aria-pressed="true"]').forEach((btn) => {
-      btn.setAttribute('aria-pressed', 'false');
-      btn.textContent = '▶';
-    });
+    // reset play button for the previously targeted song only
+    try {
+      const prevSong = autoScrollState.targetSong;
+      if (prevSong) {
+        const btn = prevSong.querySelector('.song-play-btn');
+        if (btn) {
+          btn.setAttribute('aria-pressed', 'false');
+          btn.textContent = '▶';
+        }
+      } else {
+        // fallback: reset any remaining pressed buttons
+        document.querySelectorAll('.song-play-btn[aria-pressed="true"]').forEach((btn) => {
+          btn.setAttribute('aria-pressed', 'false');
+          btn.textContent = '▶';
+        });
+      }
+    } catch (err) {
+      console.warn('Error resetting play buttons:', err);
+    }
   }
 
   // listen for song play/stop events bubbled from song elements
@@ -325,7 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // also start audio playback if tablature exists
     startAudioPlayback({ id, bpm });
   });
-  refs.songsHost?.addEventListener('song:stop', () => {
+  refs.songsHost?.addEventListener('song:stop', (e) => {
+    const { id } = e.detail || {};
+    // stop autoscroll (will reset the specific button)
     stopAutoScroll();
     stopAudioPlayback();
   });

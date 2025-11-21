@@ -433,6 +433,16 @@ body.theme-dark .delete-song-btn:hover {
   cursor: text;
 }
 
+/* When size-edit-mode is enabled allow vertical resizing of fields */
+.song.size-edit-mode .chords,
+.song.size-edit-mode .lyrics {
+  resize: vertical;
+  overflow: auto;
+  min-height: 60px;
+  border-style: solid;
+  border-color: var(--accent);
+}
+
 /* Per-field font-size overrides */
 .song .chords {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
