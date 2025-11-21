@@ -99,6 +99,19 @@ function createSongContent(songData, options) {
     tabField.classList.add('tablature-field');
     fieldsWrap.appendChild(tabField);
   }
+  // If a Guitar Pro file was imported, show a small indicator in the fields area
+  if (songData && typeof songData.tabFile === 'string' && songData.tabFile.trim()) {
+    const tabField = document.createElement('div');
+    tabField.classList.add('song-field', 'tablature-field');
+    const label = document.createElement('div');
+    label.className = 'field-label';
+    label.textContent = 'Tabulatura (Guitar Pro)';
+    const info = document.createElement('div');
+    info.className = 'gp-file-info';
+    info.textContent = `Imported: ${songData.tabFileName || 'guitar-pro'} (${songData.tabFormat || 'gp'})`;
+    tabField.append(label, info);
+    fieldsWrap.prepend(tabField);
+  }
 
   // Chords column (optional)
   if (showChords) {
@@ -295,7 +308,8 @@ function createTransposeControls() {
 
   const tabImportInput = document.createElement('input');
   tabImportInput.type = 'file';
-  tabImportInput.accept = '.txt';
+  // Accept plain text tabs and common Guitar Pro formats
+  tabImportInput.accept = '.txt,.gp3,.gp4,.gp5,.gpx,.gp';
   tabImportInput.style.display = 'none';
 
   const tabImportBtn = document.createElement('button');
@@ -322,26 +336,73 @@ function createTransposeControls() {
     const controlsNode = tabImportInput.closest('.transpose-controls');
     const songContainer = controlsNode?.closest('.song');
     if (!songContainer || !file) return;
+    const name = (file.name || '').toLowerCase();
+    const isGP = /\.gp(3|4|5|x)?$/.test(name) || /\.gpx$/.test(name) || /\.gp$/.test(name);
     const reader = new FileReader();
-    reader.onload = () => {
-      const text = typeof reader.result === 'string' ? reader.result.replace(/\r\n?/g, '\n') : '';
-      const fieldsWrap = songContainer.querySelector('.song-fields');
-      if (!fieldsWrap) return;
-      let tabWrap = fieldsWrap.querySelector('.song-field.tablature-field');
-      if (!tabWrap) {
-        tabWrap = createEditableField('tab', text, { normalize: false });
-        tabWrap.classList.add('tablature-field');
-        fieldsWrap.prepend(tabWrap);
-      }
-      const inner = tabWrap.querySelector('.tablature') || tabWrap.querySelector('[data-field="tab"]');
-      if (inner) {
-        inner.textContent = text;
-        inner.contentEditable = 'true';
-      }
-      songContainer.dataset.tab = (text || '').trim();
-      tabImportInput.value = '';
-    };
-    reader.readAsText(file, 'utf-8');
+    if (isGP) {
+      // read as ArrayBuffer and store base64 in dataset for serialization
+      reader.onload = () => {
+        const ab = reader.result;
+        try {
+          const bytes = new Uint8Array(ab);
+          let binary = '';
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          const base64 = btoa(binary);
+          songContainer.dataset.tabFile = base64;
+          songContainer.dataset.tabFormat = 'gp';
+          songContainer.dataset.tabFileName = file.name || 'import.gp5';
+          // show a non-editable indicator in the fields area
+          const fieldsWrap = songContainer.querySelector('.song-fields');
+          if (fieldsWrap) {
+            let tabWrap = fieldsWrap.querySelector('.song-field.tablature-field');
+            if (!tabWrap) {
+              tabWrap = document.createElement('div');
+              tabWrap.className = 'song-field tablature-field';
+              const label = document.createElement('div');
+              label.className = 'field-label';
+              label.textContent = 'Tabulatura (Guitar Pro)';
+              const info = document.createElement('div');
+              info.className = 'gp-file-info';
+              info.textContent = `Imported: ${songContainer.dataset.tabFileName}`;
+              tabWrap.append(label, info);
+              fieldsWrap.prepend(tabWrap);
+            } else {
+              const info = tabWrap.querySelector('.gp-file-info');
+              if (info) info.textContent = `Imported: ${songContainer.dataset.tabFileName}`;
+            }
+            // reveal per-song tab controls
+            try { const perSongTabControls = controlsNode.querySelector('.tab-controls'); if (perSongTabControls) perSongTabControls.style.display = ''; } catch (e) {}
+          }
+          window.alert('Zaimportowano plik Guitar Pro. Możesz go później odtworzyć, jeśli zaintegrujesz player (np. AlphaTab).');
+        } catch (err) {
+          console.error('GP import error:', err);
+          window.alert('Błąd importu pliku Guitar Pro.');
+        }
+        tabImportInput.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // fallback: plain text tab
+      reader.onload = () => {
+        const text = typeof reader.result === 'string' ? reader.result.replace(/\r\n?/g, '\n') : '';
+        const fieldsWrap = songContainer.querySelector('.song-fields');
+        if (!fieldsWrap) return;
+        let tabWrap = fieldsWrap.querySelector('.song-field.tablature-field');
+        if (!tabWrap) {
+          tabWrap = createEditableField('tab', text, { normalize: false });
+          tabWrap.classList.add('tablature-field');
+          fieldsWrap.prepend(tabWrap);
+        }
+        const inner = tabWrap.querySelector('.tablature') || tabWrap.querySelector('[data-field="tab"]');
+        if (inner) {
+          inner.textContent = text;
+          inner.contentEditable = 'true';
+        }
+        songContainer.dataset.tab = (text || '').trim();
+        tabImportInput.value = '';
+      };
+      reader.readAsText(file, 'utf-8');
+    }
   });
 
   tabSaveBtn.addEventListener('click', () => {
@@ -352,7 +413,12 @@ function createTransposeControls() {
     const tabWrap = fieldsWrap?.querySelector('.song-field.tablature-field');
     const inner = tabWrap ? (tabWrap.querySelector('.tablature') || tabWrap.querySelector('[data-field="tab"]')) : null;
     const val = inner ? (inner.textContent || '').trim() : '';
-    songContainer.dataset.tab = val;
+    // If there's a Guitar Pro file imported, prefer keeping that; otherwise persist text tab
+    if (songContainer.dataset.tabFile && songContainer.dataset.tabFile.trim()) {
+      // nothing to do for saving binary here – it's already stored in dataset
+    } else {
+      songContainer.dataset.tab = val;
+    }
     const prev = tabSaveBtn.textContent;
     tabSaveBtn.textContent = 'Zapisano';
     setTimeout(() => { tabSaveBtn.textContent = prev; }, 1200);
@@ -647,7 +713,7 @@ function createSongElement(songData, options, songsHost) {
     content.appendChild(controls);
     // If this song already has tablature data, show the per-song tab controls
     try {
-      if (songData && typeof songData.tab === 'string' && songData.tab.trim()) {
+      if (songData && ((typeof songData.tab === 'string' && songData.tab.trim()) || (typeof songData.tabFile === 'string' && songData.tabFile.trim()))) {
         const perSongTabControls = controls.querySelector('.tab-controls');
         if (perSongTabControls) perSongTabControls.style.display = '';
       }
@@ -1151,6 +1217,10 @@ export function serializeSongs(songsHost) {
     if (tabEl) {
       song.dataset.tab = tab;
     }
+    // if a binary tab file was imported (Guitar Pro), include it in serialization
+    const tabFile = song.dataset.tabFile || '';
+    const tabFormat = song.dataset.tabFormat || '';
+    const tabFileName = song.dataset.tabFileName || '';
     const bpmEl = song.querySelector('.bpm-input');
     const bpmVal = bpmEl ? (bpmEl.value || '') : (typeof song.dataset.bpm === 'string' ? song.dataset.bpm : '');
     if (bpmEl) {
@@ -1162,6 +1232,11 @@ export function serializeSongs(songsHost) {
     const item = { title, id, chords, lyrics, notes, tab, bpm: bpmVal };
     if (chordsHeight) item.chordsHeight = chordsHeight;
     if (lyricsHeight) item.lyricsHeight = lyricsHeight;
+    if (tabFile) {
+      item.tabFile = tabFile;
+      item.tabFormat = tabFormat;
+      if (tabFileName) item.tabFileName = tabFileName;
+    }
     songs.push(item);
   });
   return songs;
