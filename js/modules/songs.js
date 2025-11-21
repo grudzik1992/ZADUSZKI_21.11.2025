@@ -229,35 +229,6 @@ function createTransposeControls() {
     const enabled = songDiv.classList.toggle('size-edit-mode');
     sizeToggle.setAttribute('aria-pressed', String(enabled));
     sizeToggle.title = enabled ? 'Wyłącz edycję rozmiaru' : 'Włącz edycję rozmiaru';
-    // when disabling, persist widths (chords/lyrics) so they can be restored
-    if (!enabled) {
-      const chordsEl = songDiv.querySelector('.chords');
-      const lyricsEl = songDiv.querySelector('.lyrics');
-      if (chordsEl) {
-        // prefer explicit style width if set, fallback to computed
-        songDiv.dataset.chordsWidth = chordsEl.style.width || getComputedStyle(chordsEl).width || '';
-      }
-      if (lyricsEl) {
-        songDiv.dataset.lyricsWidth = lyricsEl.style.width || getComputedStyle(lyricsEl).width || '';
-      }
-    }
-  });
-
-  // Add per-song height edit toggle. Allows vertical resizing of chords/lyrics.
-  const heightToggle = document.createElement('button');
-  heightToggle.type = 'button';
-  heightToggle.className = 'tab-toggle-btn song-height-toggle';
-  heightToggle.title = 'Włącz edycję wysokości kontenerów (przeciągnij by zmienić)';
-  heightToggle.textContent = 'Wysokość';
-  controls.appendChild(heightToggle);
-
-  heightToggle.addEventListener('click', () => {
-    const controlsNode = heightToggle.closest('.transpose-controls');
-    const songDiv = controlsNode?.closest('.song');
-    if (!songDiv) return;
-    const enabled = songDiv.classList.toggle('size-edit-height');
-    heightToggle.setAttribute('aria-pressed', String(enabled));
-    heightToggle.title = enabled ? 'Wyłącz edycję wysokości' : 'Włącz edycję wysokości';
     // when disabling, persist heights
     if (!enabled) {
       const chordsEl = songDiv.querySelector('.chords');
@@ -334,12 +305,12 @@ function createSongElement(songData, options, songsHost) {
     songDiv.dataset.fontLyrics = songData.fontLyrics;
     songDiv.style.setProperty('--song-lyrics-font-size', songData.fontLyrics);
   }
-  // apply persisted widths if present
-  if (songData.chordsWidth) {
-    songDiv.dataset.chordsWidth = songData.chordsWidth;
+  // apply persisted heights if present
+  if (songData.chordsHeight) {
+    songDiv.dataset.chordsHeight = songData.chordsHeight;
   }
-  if (songData.lyricsWidth) {
-    songDiv.dataset.lyricsWidth = songData.lyricsWidth;
+  if (songData.lyricsHeight) {
+    songDiv.dataset.lyricsHeight = songData.lyricsHeight;
   }
   if (!showChords) {
     songDiv.classList.add('song--lyrics-only');
@@ -452,10 +423,6 @@ function createSongElement(songData, options, songsHost) {
   try {
     const chordsEl = songDiv.querySelector('.chords');
     const lyricsEl = songDiv.querySelector('.lyrics');
-    // apply persisted widths if present
-    if (songDiv.dataset.chordsWidth && chordsEl) chordsEl.style.width = songDiv.dataset.chordsWidth;
-    if (songDiv.dataset.lyricsWidth && lyricsEl) lyricsEl.style.width = songDiv.dataset.lyricsWidth;
-    // apply persisted heights if present
     if (songDiv.dataset.chordsHeight && chordsEl) chordsEl.style.height = songDiv.dataset.chordsHeight;
     if (songDiv.dataset.lyricsHeight && lyricsEl) lyricsEl.style.height = songDiv.dataset.lyricsHeight;
   } catch (err) {
@@ -702,14 +669,10 @@ export function serializeSongs(songsHost) {
     if (bpmEl) {
       song.dataset.bpm = String(bpmVal);
     }
-    // persist any manual widths and heights
-    const chordsWidth = song.dataset.chordsWidth || '';
-    const lyricsWidth = song.dataset.lyricsWidth || '';
+    // persist any manual heights
     const chordsHeight = song.dataset.chordsHeight || '';
     const lyricsHeight = song.dataset.lyricsHeight || '';
     const item = { title, id, chords, lyrics, notes, tab, bpm: bpmVal };
-    if (chordsWidth) item.chordsWidth = chordsWidth;
-    if (lyricsWidth) item.lyricsWidth = lyricsWidth;
     if (chordsHeight) item.chordsHeight = chordsHeight;
     if (lyricsHeight) item.lyricsHeight = lyricsHeight;
     songs.push(item);
